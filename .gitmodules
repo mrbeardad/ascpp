@@ -1,0 +1,12 @@
+[submodule "3rd_party/asio"]
+	path = 3rd_party/asio
+	url = https://github.com/chriskohlhoff/asio
+[submodule "3rd_party/googletest"]
+	path = 3rd_party/googletest
+	url = https://github.com/google/googletest
+[submodule "3rd_party/nlohmannjson"]
+	path = 3rd_party/nlohmannjson
+	url = https://github.com/nlohmann/json
+[submodule "3rd_party/cxxopts"]
+	path = 3rd_party/cxxopts
+	url = https://github.com/jarro2783/cxxopts

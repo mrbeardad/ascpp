@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug LLDB",
+      "type": "lldb",
+      "request": "launch",
+      "expressions": "native",
+      "initCommands": ["set set target.max-string-summary-length 10000"],
+      "program": "${workspaceFolder}/build/test/ascpp_test.exe",
+      "args": [],
+      "env": { "NAME": "val" },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+// clang-format off
+#cmakedefine ORGNIZATION_NAME @ORGNIZATION_NAME@
