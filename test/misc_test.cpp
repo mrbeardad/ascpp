@@ -3,12 +3,15 @@
 
 #include "gtest/gtest.h"
 
-TEST(Misc, GetEnv) {
+TEST(TestMisc, GetEnv) {
   EXPECT_FALSE(ascpp::GetEnv("null"));
 
-  ::_putenv_s("hello", "world");
+  ascpp::SetEnv("empty", "");
+  EXPECT_FALSE(ascpp::GetEnv("empty"));
+
+  ascpp::SetEnv("hello", "world");
   EXPECT_EQ(ascpp::GetEnv("hello").value(), "world");
 
-  ::_putenv_s("empty", "");
-  EXPECT_ANY_THROW(ascpp::GetEnv("empty").value());
+  ascpp::SetEnv("name with space", "value with space");
+  EXPECT_EQ(ascpp::GetEnv("name with space").value(), "value with space");
 }

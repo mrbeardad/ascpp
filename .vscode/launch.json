@@ -7,7 +7,7 @@
       "request": "launch",
       "expressions": "native",
       "initCommands": ["set set target.max-string-summary-length 10000"],
-      "program": "${workspaceFolder}/build/test/ascpp_test.exe",
+      "program": "${workspaceFolder}/build/test/test",
       "args": [],
       "env": { "NAME": "val" },
       "cwd": "${workspaceFolder}"
