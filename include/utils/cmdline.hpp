@@ -168,6 +168,10 @@ class Cmdline {
     return result_[option].as<T>();
   }
 
+  const std::vector<std::string>& GetUnmatched() const {
+    return result_.unmatched();
+  }
+
  private:
   cxxopts::Options options_;
   cxxopts::ParseResult result_;

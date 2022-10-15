@@ -1,9 +1,45 @@
 #include "utils/cmdline.hpp"
+#include <math.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
+
+TEST(TestCmdline, BasicUsage) {
+  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  cmdline.AddOption<std::string>('s', "str", "");
+  std::vector<const char*> argv{};
+  std::vector<std::string> unmatched{};
+
+  argv = {"ascpp", "-shello"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "hello");
+
+  argv = {"ascpp", "-s", "hello"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "hello");
+
+  argv = {"ascpp", "--str=hello"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "hello");
+
+  argv = {"ascpp", "--str=hello", "world"};
+  unmatched = {"world"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline.GetUnmatched(), unmatched);
+
+  argv = {"ascpp", "--str=hello", "--str=world"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "world");
+
+  argv = {"ascpp", "--str=hello", "--", "--str=world"};
+  unmatched = {"--str=world"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline.GetUnmatched(), unmatched);
+}
 
 TEST(TestCmdline, AddBoolOption) {
   ascpp::Cmdline cmdline{"ascpp", "ascpp"};
@@ -75,7 +111,13 @@ TEST(TestCmdline, AddBoolOption) {
   argv = {"ascpp", "--bool=true"};
   cmdline.Parse(argv.size(), argv.data());
   EXPECT_EQ(cmdline.Get<bool>("bool"), true);
+  argv = {"ascpp", "--bool=1"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<bool>("bool"), true);
   argv = {"ascpp", "--bool=false"};
+  cmdline.Parse(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.Get<bool>("bool"), false);
+  argv = {"ascpp", "--bool=0"};
   cmdline.Parse(argv.size(), argv.data());
   EXPECT_EQ(cmdline.Get<bool>("bool"), false);
 }
@@ -155,6 +197,9 @@ TEST(TestCmdline, AddIntOption) {
   argv = {"ascpp", "--int=22"};
   cmdline.Parse(argv.size(), argv.data());
   EXPECT_EQ(cmdline.Get<int>("int"), 22);
+
+  argv = {"ascpp", "--int=nan"};
+  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
 }
 
 TEST(TestCmdline, AddFloatOption) {
