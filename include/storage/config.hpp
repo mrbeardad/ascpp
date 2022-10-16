@@ -2,35 +2,89 @@
 #define ASCPP_STORAGE_CONFIG_H_
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <ios>
+#include <iostream>
 #include <memory>
+#include <mutex>
+#include <ostream>
+#include <shared_mutex>
 #include <string>
+#include <system_error>
 
+#include "fmt/chrono.h"
 #include "nlohmann/json.hpp"
 
-using json = nlohmann::json;
+#include "async/app.hpp"
+#include "nlohmann/json_fwd.hpp"
+#include "utils/directories.hpp"
 
 namespace ascpp {
 
-// TODO: get, set, read(init), write(auto), sync(listen,notify)
-class Configuration {
+class Config {
  public:
-  Configuration(std::string org_name, std::string app_name);
-  Configuration(Configuration&&) = default;
-  Configuration(const Configuration&) = default;
-  Configuration& operator=(Configuration&&) = default;
-  Configuration& operator=(const Configuration&) = default;
-  ~Configuration();
+  enum ConfigType { kUserConfig = 1, kMachineConfig };
 
-  template <typename T>
-  T& get(const std::string& biz_name, const std::string& key);
+  // TODO: Notify confliction, modified obverser
+  enum SyncOption { kForceRead = 1, kForceWrite };
 
-  template <typename T>
-  T* get_if(const std::string& biz_name, const std::string& key);
+  explicit Config(App* app, ConfigType type)
+      : app_{app},
+        config_file_{std::filesystem::path{GetConfigDir().value()} / app->GetOrgName()
+                     / (app->GetAppName() + (kUserConfig ? "_user.json" : "_machine.json"))} {
+    CreateFilePath(config_file_);
+    ReadConfig();
+  }
+
+  ~Config() = default;
+
+  void ReadConfig() {
+    std::unique_lock lock{mutex_};
+    std::error_code errc{};
+    auto last_write_timestamp = std::filesystem::last_write_time(config_file_, errc);
+    if (errc) {
+      return;
+    }
+    if (last_write_timestamp > last_sync_timestamp_) {
+      std::ifstream in{config_file_, std::ios_base::in | std::ios_base::app};
+      if (in) {
+        last_sync_timestamp_ = last_write_timestamp;
+      }
+      in >> config_data_;
+      std::cerr << in.good();
+    }
+  }
+
+  void WriteConfig() {
+    std::shared_lock lock{mutex_};
+    if (last_modified_time_ > last_sync_time_) {
+      std::ofstream out{config_file_, std::ios_base::out | std::ios_base::trunc};
+      out << config_data_ << std::flush;
+      if (out) {
+        last_sync_time_ = last_modified_time_;
+        last_sync_timestamp_ = std::filesystem::last_write_time(config_file_);
+      }
+    }
+  }
+
+  void SyncConfig(SyncOption option) {
+    bool need_write = last_modified_time_ > last_sync_time_;
+    bool need_read = std::filesystem::last_write_time(config_file_) > last_sync_timestamp_;
+    if (need_write && (!need_read || option == kForceWrite)) {
+    }
+  }
+
+  auto& operator[](const std::string& key) { return config_data_[key]; }
 
  private:
-  std::string org_name_;
-  std::string app_name_;
+  App* app_;
+  std::shared_mutex mutex_;
+  std::filesystem::path config_file_;
+  nlohmann::json config_data_;
   std::chrono::system_clock::time_point last_modified_time_;
+  std::chrono::system_clock::time_point last_sync_time_;
+  std::filesystem::file_time_type last_sync_timestamp_;
 };
 
 }  // namespace ascpp

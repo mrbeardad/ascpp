@@ -1,17 +1,25 @@
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <ostream>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <tuple>
 #include <vector>
 
+#include "async/app.hpp"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "fmt/ranges.h"
 #include "nlohmann/json.hpp"
 
+#include "storage/config.hpp"
 #include "utils/cmdline.hpp"
+#include "utils/directories.hpp"
 #include "utils/error.hpp"
+
+ascpp::App app{"ascpp", "ascpp", "", ""};
 
 void cxxopts_ex(int argc, const char** argv) {
   cxxopts::Options options{"ascpp", "async/awesome cpp framework"};
@@ -32,7 +40,7 @@ void cxxopts_ex(int argc, const char** argv) {
 }
 
 void cmdline_ex(int argc, const char** argv) {
-  ascpp::Cmdline cmdline{"ascpp", "async and awesome cpp framework"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<int>('i', "int", "number");
   cmdline.AddOptionWithDefault<std::string>('s', "str", "string", "fuck");
   cmdline.Parse(argc, argv);
@@ -56,7 +64,20 @@ void fmtformat() {
   std::cout << fmt::is_range<std::vector<int>, char>::value << std::endl;
 }
 
+using std::chrono::operator""s;
+
+void filelock() {
+  std::ifstream in{ascpp::GetHomeDir().value() + "/test.lock"};
+  std::this_thread::sleep_for(100s);
+}
+
+void config() {
+  ascpp::Config cfg{&app, ascpp::Config::kUserConfig};
+  cfg["fuck"] = "you";
+  cfg.WriteConfig();
+}
+
 int main(int argc, const char** argv) {
-  fmtformat();
+  std::cout << std::filesystem::last_write_time("/root").time_since_epoch().count() << std::endl;
   return 0;
 }
