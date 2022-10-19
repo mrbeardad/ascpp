@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 
 TEST(TestDirectories, GetConfigDir) {
-  // std::cout << ascpp::GetConfigDir().value() << std::endl;
-  // std::cout << ascpp::GetCacheDir().value() << std::endl;
+  std::cout << "GetHomeDir()  : " << ascpp::GetHomeDir().Unwrap() << std::endl;
+  std::cout << "GetConfigDir(): " << ascpp::GetConfigDir().Unwrap() << std::endl;
+  std::cout << "GetCacheDir() : " << ascpp::GetCacheDir().Unwrap() << std::endl;
 }

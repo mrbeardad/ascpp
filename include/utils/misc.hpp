@@ -5,52 +5,53 @@
 #include <cstring>
 #include <optional>
 #include <string>
+#include <system_error>
+#include "utils/error.hpp"
+#include "utils/result.hpp"
 
 namespace ascpp {
 
-/**
- * @brief Get environment variable
- *
- * @param name[in] Variable name
- * @return std::optional<std::string> Variable value. Return nullopt if variable does not
- * exist or it is empty.
- */
-inline std::optional<std::string> GetEnv(const std::string& name) {
+inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
   size_t size{};
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
-  if (err || size == 0) {
-    return {};
+  if (err) {
+    return make_error_code(SystemError::kGetEnvError);
+  }
+  if (size == 0) {
+    return make_error_code(SystemError::kGetEnvWithEmptyVale);
   }
 
   std::string value(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return {};
+    return make_error_code(SystemError::kGetEnvError);
   }
   value.resize(size - 1);
   return value;
 #else
   auto* value = std::getenv(name.c_str());
-  if (value == nullptr || std::strlen(value) == 0) {
-    return {};
+  if (value == nullptr) {
+    return make_error_code(SystemError::kGetEnvError);
+  }
+  if (std::strlen(value) == 0) {
+    return make_error_code(SystemError::kGetEnvWithEmptyVale);
   }
   return value;
 #endif
 }
 
-/**
- * @brief Set environment variable
- *
- * @param name[in] Variable name
- * @param value[in] Variable value
- * @return int Zero if it succeeds and nonzero otherwise
- */
-inline int SetEnv(const std::string& name, const std::string& value) {
+inline auto SetEnv(const std::string& name, const std::string& value) -> std::error_code {
 #if defined(_WIN32) || defined(_WIN64)
-  return ::_putenv_s(name.c_str(), value.c_str());
+  if (::_putenv_s(name.c_str(), value.c_str())) {
+    return make_error_code(SystemError::kSetEnvError);
+  }
+  return {};
 #else
-  return ::setenv(name.c_str(), value.c_str(), 1);
+  if (::setenv(name.c_str(), value.c_str(), 1)) {
+    return make_error_code(SystemError::kSetEnvError);
+  }
+  return {};
 #endif
 }
 

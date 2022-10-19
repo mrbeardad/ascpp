@@ -1,5 +1,4 @@
 #include "utils/misc.hpp"
-#include <stdlib.h>
 
 #include "gtest/gtest.h"
 
@@ -10,8 +9,8 @@ TEST(TestMisc, GetEnv) {
   EXPECT_FALSE(ascpp::GetEnv("empty"));
 
   ascpp::SetEnv("hello", "world");
-  EXPECT_EQ(ascpp::GetEnv("hello").value(), "world");
+  EXPECT_EQ(ascpp::GetEnv("hello").Unwrap(), "world");
 
   ascpp::SetEnv("name with space", "value with space");
-  EXPECT_EQ(ascpp::GetEnv("name with space").value(), "value with space");
+  EXPECT_EQ(ascpp::GetEnv("name with space").Unwrap(), "value with space");
 }

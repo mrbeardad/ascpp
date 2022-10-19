@@ -8,71 +8,60 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <type_traits>
+#include <variant>
 
 #include "utils/misc.hpp"
+#include "utils/result.hpp"
 
 namespace ascpp {
 
-namespace fs = std::filesystem;
+namespace fs = std::filesystem;  // NOLINT
 
-/**
- * @brief Get the configuration directory
- *
- * @return std::optional<std::string> configuration directory path
- */
-inline std::optional<std::filesystem::path> GetConfigDir() {
+inline auto GetConfigDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("APPDATA");
 #elif defined(__unix__) || defined(__linux__)
-  if (auto dir = GetEnv("XDG_CONFIG_HOME"); dir) {
+  auto dir = GetEnv("XDG_CONFIG_HOME");
+  if (dir) {
     return dir;
   }
-  if (auto dir = GetEnv("HOME"); dir) {
-    return fs::path{dir.value()} / ".config";
+  dir = GetEnv("HOME");
+  if (dir) {
+    return fs::path{dir.Unwrap()} / ".config";
   }
-  return {};
+  return dir;
 #elif defined(TARGET_OS_MAC)
-  if (auto dir = GetEnv("HOME"); dir) {
-    return fs::path{dir.value()} / "Library/Application Support";
+  auto dir = GetEnv("HOME");
+  if (dir) {
+    return fs::path{dir.Unwrap()} / "Library/Application Support";
   }
-  return {};
+  return dir;
 #endif
 }
 
-/**
- * @brief Get the cache directory
- *
- * @return std::optional<std::string> Cache directory path
- */
-inline std::optional<std::string> GetCacheDir() {
+inline auto GetCacheDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("LOCALAPPDATA");
 #elif defined(__unix__) || defined(__linux__)
-  if (auto dir = GetEnv("XDG_CACHE_HOME"); dir) {
+  auto dir = GetEnv("XDG_CACHE_HOME");
+  if (dir) {
     return dir;
   }
-  if (auto dir = GetEnv("HOME"); dir) {
-    fs::path dirpath{dir.value()};
-    dirpath /= ".cache";
-    return dirpath.string();
+  dir = GetEnv("HOME");
+  if (dir) {
+    return fs::path{dir.Unwrap()} / ".cache";
   }
-  return {};
+  return dir;
 #elif defined(TARGET_OS_MAC)
   if (auto dir = GetEnv("HOME"); dir) {
-    fs::path dirpath{dir.value()};
-    dirpath /= "Library/Caches";
-    return dirpath.string();
+    return fs::path{dir.Unwrap()} / "Library/Caches";
   }
-  return {};
+  return dir;
 #endif
 }
 
-/**
- * @brief Get the home directory
- *
- * @return std::optional<std::string> Home Directory path
- */
-inline std::optional<std::string> GetHomeDir() {
+inline auto GetHomeDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("USERPROFILE");
 #else
@@ -80,7 +69,7 @@ inline std::optional<std::string> GetHomeDir() {
 #endif
 }
 
-inline std::error_code CreateFilePath(const std::filesystem::path& filepath) {
+inline auto CreateFilePath(const std::filesystem::path& filepath) -> std::error_code {
   std::error_code err{};
   auto result = std::filesystem::exists(filepath, err);
   if (err) {
@@ -99,7 +88,7 @@ inline std::error_code CreateFilePath(const std::filesystem::path& filepath) {
       return err;
     }
   }
-  std::ofstream out{filepath};
+  const std::ofstream out{filepath};
   if (!out) {
     return std::make_error_code(static_cast<std::errc>(errno));
   }

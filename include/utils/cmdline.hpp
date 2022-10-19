@@ -14,32 +14,30 @@
 
 namespace ascpp {
 
-using std::string_literals::operator""s;
-
 class Cmdline {
  public:
   explicit Cmdline(App* app) : options_{app->GetAppName(), app->GetAppDescription()} {}
 
   Cmdline(Cmdline&&) = default;
   Cmdline(const Cmdline&) = default;
-  Cmdline& operator=(Cmdline&&) = default;
-  Cmdline& operator=(const Cmdline&) = default;
+  auto operator=(Cmdline&&) -> Cmdline& = default;
+  auto operator=(const Cmdline&) -> Cmdline& = default;
   ~Cmdline() = default;
 
   template <typename T>
-  void AddOption(const std::string& long_option, const std::string& description) {
+  auto AddOption(const std::string& long_option, const std::string& description) {
     options_.add_options()(long_option, description, cxxopts::value<T>());
   }
 
   template <typename T>
-  void AddOption(char short_option,
+  auto AddOption(char short_option,
                  const std::string& long_option,
                  const std::string& description) {
     options_.add_options()(short_option + ","s + long_option, description, cxxopts::value<T>());
   }
 
   template <typename T>
-  void AddOptionWithDefault(const std::string& long_option,
+  auto AddOptionWithDefault(const std::string& long_option,
                             const std::string& description,
                             T&& default_value) {
     options_.add_options()(long_option, description,
@@ -47,18 +45,17 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithDefault(
-      const std::string& long_option,
-      const std::string& description,
-      T&& default_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithDefault(const std::string& long_option,
+                            const std::string& description,
+                            T&& default_value) {
     options_.add_options()(
         long_option, description,
         cxxopts::value<T>()->default_value(fmt::to_string(fmt::join(default_value, ","))));
   }
 
   template <typename T>
-  void AddOptionWithDefault(char short_option,
+  auto AddOptionWithDefault(char short_option,
                             const std::string& long_option,
                             const std::string& description,
                             T&& default_value) {
@@ -67,19 +64,18 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithDefault(
-      char short_option,
-      const std::string& long_option,
-      const std::string& description,
-      T&& default_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithDefault(char short_option,
+                            const std::string& long_option,
+                            const std::string& description,
+                            T&& default_value) {
     options_.add_options()(
         short_option + ","s + long_option, description,
         cxxopts::value<T>()->default_value(fmt::to_string(fmt::join(default_value, ","))));
   }
 
   template <typename T>
-  void AddOptionWithImplicit(const std::string& long_option,
+  auto AddOptionWithImplicit(const std::string& long_option,
                              const std::string& description,
                              T&& implicit_value) {
     options_.add_options()(long_option, description,
@@ -87,18 +83,17 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithImplicit(
-      const std::string& long_option,
-      const std::string& description,
-      T&& implicit_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithImplicit(const std::string& long_option,
+                             const std::string& description,
+                             T&& implicit_value) {
     options_.add_options()(
         long_option, description,
         cxxopts::value<T>()->implicit_value(fmt::to_string(fmt::join(implicit_value, ","))));
   }
 
   template <typename T>
-  void AddOptionWithImplicit(char short_option,
+  auto AddOptionWithImplicit(char short_option,
                              const std::string& long_option,
                              const std::string& description,
                              T&& implicit_value) {
@@ -107,19 +102,18 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithImplicit(
-      char short_option,
-      const std::string& long_option,
-      const std::string& description,
-      T&& implicit_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithImplicit(char short_option,
+                             const std::string& long_option,
+                             const std::string& description,
+                             T&& implicit_value) {
     options_.add_options()(
         short_option + ","s + long_option, description,
         cxxopts::value<T>()->implicit_value(fmt::to_string(fmt::join(implicit_value, ","))));
   }
 
   template <typename T>
-  void AddOptionWithBoth(const std::string& long_option,
+  auto AddOptionWithBoth(const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
                          T&& implicit_value) {
@@ -130,12 +124,11 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithBoth(
-      const std::string& long_option,
-      const std::string& description,
-      T&& default_value,
-      T&& implicit_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithBoth(const std::string& long_option,
+                         const std::string& description,
+                         T&& default_value,
+                         T&& implicit_value) {
     options_.add_options()(long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(fmt::join(default_value, ",")))
@@ -143,7 +136,7 @@ class Cmdline {
   }
 
   template <typename T>
-  void AddOptionWithBoth(char short_option,
+  auto AddOptionWithBoth(char short_option,
                          const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
@@ -155,27 +148,26 @@ class Cmdline {
   }
 
   template <std::ranges::range T>
-
-  requires(!std::is_convertible_v<T, std::string>) void AddOptionWithBoth(
-      char short_option,
-      const std::string& long_option,
-      const std::string& description,
-      T&& default_value,
-      T&& implicit_value) {
+    requires(!std::is_convertible_v<T, std::string>)
+  auto AddOptionWithBoth(char short_option,
+                         const std::string& long_option,
+                         const std::string& description,
+                         T&& default_value,
+                         T&& implicit_value) {
     options_.add_options()(short_option + ","s + long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(fmt::join(default_value, ",")))
                                ->implicit_value(fmt::to_string(fmt::join(implicit_value, ","))));
   }
 
-  void Parse(int argc, const char** argv) { result_ = options_.parse(argc, argv); }
+  auto Parse(int argc, const char** argv) { result_ = options_.parse(argc, argv); }
 
   template <typename T>
-  const T& Get(const std::string& option) const {
+  auto Get(const std::string& option) const& -> const T& {
     return result_[option].as<T>();
   }
 
-  const std::vector<std::string>& GetUnmatched() const { return result_.unmatched(); }
+  auto GetUnmatched() const& -> const std::vector<std::string>& { return result_.unmatched(); }
 
  private:
   cxxopts::Options options_;

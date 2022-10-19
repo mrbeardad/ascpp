@@ -4,10 +4,13 @@
 #include <string>
 #include <vector>
 
+#include "async/app.hpp"
 #include "gtest/gtest.h"
 
+ascpp::App app{"", "", "", ""};
+
 TEST(TestCmdline, BasicUsage) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<std::string>('s', "str", "");
   std::vector<const char*> argv{};
   std::vector<std::string> unmatched{};
@@ -42,16 +45,16 @@ TEST(TestCmdline, BasicUsage) {
 }
 
 TEST(TestCmdline, AddBoolOption) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<bool>('b', "short_b", "");
   cmdline.AddOption<bool>("bool", "");
-  ascpp::Cmdline cmdline_default{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_default{&app};
   cmdline_default.AddOptionWithDefault<bool>('b', "short_b", "", true);
   cmdline_default.AddOptionWithDefault<bool>("bool", "", true);
-  ascpp::Cmdline cmdline_implicit{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_implicit{&app};
   cmdline_implicit.AddOptionWithImplicit<bool>('b', "short_b", "", false);
   cmdline_implicit.AddOptionWithImplicit<bool>("bool", "", false);
-  ascpp::Cmdline cmdline_both{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_both{&app};
   cmdline_both.AddOptionWithBoth<bool>('b', "short_b", "", true, false);
   cmdline_both.AddOptionWithBoth<bool>("bool", "", true, false);
   std::vector<const char*> argv{};
@@ -123,16 +126,16 @@ TEST(TestCmdline, AddBoolOption) {
 }
 
 TEST(TestCmdline, AddIntOption) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<int>('i', "short_i", "");
   cmdline.AddOption<int>("int", "");
-  ascpp::Cmdline cmdline_default{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_default{&app};
   cmdline_default.AddOptionWithDefault<int>('i', "short_i", "", 11);
   cmdline_default.AddOptionWithDefault<int>("int", "", 11);
-  ascpp::Cmdline cmdline_implicit{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_implicit{&app};
   cmdline_implicit.AddOptionWithImplicit<int>('i', "short_i", "", 11);
   cmdline_implicit.AddOptionWithImplicit<int>("int", "", 11);
-  ascpp::Cmdline cmdline_both{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_both{&app};
   cmdline_both.AddOptionWithBoth<int>('i', "short_i", "", 11, 11);
   cmdline_both.AddOptionWithBoth<int>("int", "", 11, 11);
   std::vector<const char*> argv{};
@@ -203,16 +206,16 @@ TEST(TestCmdline, AddIntOption) {
 }
 
 TEST(TestCmdline, AddFloatOption) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<float>('f', "short_f", "");
   cmdline.AddOption<float>("float", "");
-  ascpp::Cmdline cmdline_default{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_default{&app};
   cmdline_default.AddOptionWithDefault<float>('f', "short_f", "", 1.1);
   cmdline_default.AddOptionWithDefault<float>("float", "", 1.1);
-  ascpp::Cmdline cmdline_implicit{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_implicit{&app};
   cmdline_implicit.AddOptionWithImplicit<float>('f', "short_f", "", 1.1);
   cmdline_implicit.AddOptionWithImplicit<float>("float", "", 1.1);
-  ascpp::Cmdline cmdline_both{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_both{&app};
   cmdline_both.AddOptionWithBoth<float>('f', "short_f", "", 1.1, 1.1);
   cmdline_both.AddOptionWithBoth<float>("float", "", 1.1, 1.1);
   std::vector<const char*> argv{};
@@ -280,16 +283,16 @@ TEST(TestCmdline, AddFloatOption) {
 }
 
 TEST(TestCmdline, AddStringOption) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<std::string>('s', "short_s", "");
   cmdline.AddOption<std::string>("string", "");
-  ascpp::Cmdline cmdline_default{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_default{&app};
   cmdline_default.AddOptionWithDefault<std::string>('s', "short_s", "", "hello");
   cmdline_default.AddOptionWithDefault<std::string>("string", "", "hello");
-  ascpp::Cmdline cmdline_implicit{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_implicit{&app};
   cmdline_implicit.AddOptionWithImplicit<std::string>('s', "short_s", "", "hello");
   cmdline_implicit.AddOptionWithImplicit<std::string>("string", "", "hello");
-  ascpp::Cmdline cmdline_both{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_both{&app};
   cmdline_both.AddOptionWithBoth<std::string>('s', "short_s", "", "hello", "hello");
   cmdline_both.AddOptionWithBoth<std::string>("string", "", "hello", "hello");
   std::vector<const char*> argv{};
@@ -357,18 +360,18 @@ TEST(TestCmdline, AddStringOption) {
 }
 
 TEST(TestCmdline, AddVectorOption) {
-  ascpp::Cmdline cmdline{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline{&app};
   cmdline.AddOption<std::vector<std::string>>('v', "short_v", "");
   cmdline.AddOption<std::vector<std::string>>("vector", "");
-  ascpp::Cmdline cmdline_default{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_default{&app};
   cmdline_default.AddOptionWithDefault<std::vector<std::string>>('v', "short_v", "",
                                                                  {"a", "b", "c"});
   cmdline_default.AddOptionWithDefault<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  ascpp::Cmdline cmdline_implicit{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_implicit{&app};
   cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>('v', "short_v", "",
                                                                    {"a", "b", "c"});
   cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  ascpp::Cmdline cmdline_both{"ascpp", "ascpp"};
+  ascpp::Cmdline cmdline_both{&app};
   cmdline_both.AddOptionWithBoth<std::vector<std::string>>('v', "short_v", "", {"a", "b", "c"},
                                                            {"a", "b", "c"});
   cmdline_both.AddOptionWithBoth<std::vector<std::string>>("vector", "", {"a", "b", "c"},

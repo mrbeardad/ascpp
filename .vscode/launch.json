@@ -9,8 +9,7 @@
       "initCommands": ["set set target.max-string-summary-length 10000"],
       "program": "${workspaceFolder}/build/test/test",
       "args": [],
-      "env": { "NAME": "val" },
-      "cwd": "${workspaceFolder}"
+      "env": {}
     },
     {
       "name": "debug example",
@@ -20,8 +19,7 @@
       "initCommands": ["set set target.max-string-summary-length 10000"],
       "program": "${workspaceFolder}/build/examples/examples",
       "args": [],
-      "env": { "NAME": "val" },
-      "cwd": "${workspaceFolder}"
+      "env": {}
     }
   ]
 }
