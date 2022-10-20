@@ -2,6 +2,7 @@
 #define ASCPP_UTILS_RESULT_HPP_
 
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <system_error>
@@ -13,13 +14,17 @@ namespace ascpp {
 template <typename T>
 class Result {
  public:
-  Result(T val) : var_{std::move(val)} {}
+  Result() : var_{} {}
+
+  template <typename U>
+    requires(std::is_convertible_v<U, T>)
+  Result(U&& val) : var_{std::forward<U>(val)} {}
 
   Result(std::error_code err) : var_{err} {}
 
-  template <typename OtherT>
-    requires(std::is_convertible_v<OtherT, T>)
-  Result(Result<OtherT> var) {
+  template <typename U>
+    requires(std::is_convertible_v<U, T>)
+  Result(Result<U> var) {
     if (var) {
       var_ = std::move(var.Unwrap());
     } else {
@@ -33,15 +38,43 @@ class Result {
   auto operator=(const Result&) -> Result& = default;
   ~Result() = default;
 
-  auto Unwrap() & -> T& { return std::get<T>(var_); }
+  auto Unwrap() const& -> const T& {
+    if (var_.index() != 0) {
+      throw std::system_error(UnwrapErr());
+    }
+    return std::get<T>(var_);
+  }
 
-  auto Unwrap() const& -> const T& { return std::get<T>(var_); }
+  auto Unwrap() & -> T& { return const_cast<T&>(static_cast<const Result<T>&>(*this).Unwrap()); }
 
-  auto Unwrap() && -> T { return std::move(std::get<T>(var_)); }
+  auto Unwrap() && -> T {
+    return std::move(const_cast<T&>(static_cast<const Result<T>&>(*this).Unwrap()));
+  }
 
-  // auto UnwrapOr()
+  template <typename U>
+  auto UnwrapOr(U&& default_value) const& -> T {
+    return var_.index() != 0 ? std::forward<U>(default_value) : std::get<T>(var_);
+  }
 
-  auto UnwrapErr() -> std::error_code { return std::get<std::error_code>(var_); }
+  template <typename U>
+  auto UnwrapOr(U&& default_value) && -> T {
+    return var_.index() != 0 ? std::forward<U>(default_value) : std::move(std::get<T>(var_));
+  }
+
+  template <typename U>
+  auto UnwrapOrAssign(U&& default_value) & -> T& {
+    if (var_.index() != 0) {
+      var_ = std::forward<U>(default_value);
+    }
+    return std::get<T>(var_);
+  }
+
+  template <typename U>
+  auto UnwrapOrAssign(U&& default_value) && -> T {
+    return std::move(static_cast<Result<T>&>(*this).UnwrapOrAssign(std::forward<T>(default_value)));
+  }
+
+  auto UnwrapErr() const -> std::error_code { return std::get<std::error_code>(var_); }
 
   explicit operator bool() { return var_.index() == 0; }
 

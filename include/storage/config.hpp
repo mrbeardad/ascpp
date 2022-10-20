@@ -29,10 +29,11 @@ class Config {
   // TODO: Notify confliction, modified obverser
   enum SyncOption { kForceRead = 1, kForceWrite };
 
-  explicit Config(App* app, ConfigType type)
+  explicit Config(App* app, ConfigType cfg_type)
       : app_{app},
-        config_file_{std::filesystem::path{GetConfigDir().value()} / app->GetOrgName()
-                     / (app->GetAppName() + (kUserConfig ? "_user.json" : "_machine.json"))} {
+        config_file_{
+            GetConfigDir().Unwrap() / app->GetOrgName()
+            / (app->GetAppName() + (cfg_type == kUserConfig ? "_user.json" : "_machine.json"))} {
     CreateFilePath(config_file_);
     ReadConfig();
   }
