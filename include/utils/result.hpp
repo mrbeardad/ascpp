@@ -12,7 +12,7 @@
 namespace ascpp {
 
 template <typename T>
-class Result {
+class [[nodiscard]] Result {
  public:
   Result() : var_{} {}
 
@@ -38,18 +38,14 @@ class Result {
   auto operator=(const Result&) -> Result& = default;
   ~Result() = default;
 
-  auto Unwrap() const& -> const T& {
+  auto Unwrap() const -> const T& {
     if (var_.index() != 0) {
       throw std::system_error(UnwrapErr());
     }
     return std::get<T>(var_);
   }
 
-  auto Unwrap() & -> T& { return const_cast<T&>(static_cast<const Result<T>&>(*this).Unwrap()); }
-
-  auto Unwrap() && -> T {
-    return std::move(const_cast<T&>(static_cast<const Result<T>&>(*this).Unwrap()));
-  }
+  auto Unwrap() -> T& { return const_cast<T&>(static_cast<const Result<T>&>(*this).Unwrap()); }
 
   template <typename U>
   auto UnwrapOr(U&& default_value) const& -> T {

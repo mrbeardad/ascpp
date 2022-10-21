@@ -23,7 +23,6 @@ include_directories(3rd_party/cxxopts/include)
 add_compile_definitions(FMT_HEADER_ONLY=1)
 include_directories(3rd_party/fmt/include)
 include_directories(3rd_party/nlohmannjson/include)
-include_directories(3rd_party/cpp-dirs/include)
 set(gtest_force_shared_crt
     ON
     CACHE BOOL "" FORCE)

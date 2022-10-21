@@ -1,11 +1,15 @@
 #include "utils/cmdline.hpp"
+
 #include <math.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "async/app.hpp"
 #include "gtest/gtest.h"
+
+#include "async/app.hpp"
+
+namespace ascpp {
 
 ascpp::App app{"", "", "", ""};
 
@@ -447,3 +451,5 @@ TEST(TestCmdline, AddVectorOption) {
   values.emplace_back("");
   EXPECT_EQ(cmdline.Get<std::vector<std::string>>("vector"), values);
 }
+
+}  // namespace ascpp

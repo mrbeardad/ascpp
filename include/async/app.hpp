@@ -2,26 +2,11 @@
 #ifndef ASCPP_ASYNC_APP_HPP_
 #define ASCPP_ASYNC_APP_HPP_
 
-#include <chrono>
-#include <filesystem>
-#include <memory>
-#include <ostream>
 #include <string>
 
 #include "asio/thread_pool.hpp"
 
 namespace ascpp {
-
-namespace fs = std::filesystem;                 // NOLINT
-namespace ch = std::chrono;                     // NOLINT
-using std::string_literals::operator""s;        // NOLINT
-using std::string_view_literals::operator""sv;  // NOLINT
-using std::chrono_literals::operator""ns;       // NOLINT
-using std::chrono_literals::operator""us;       // NOLINT
-using std::chrono_literals::operator""ms;       // NOLINT
-using std::chrono_literals::operator""s;        // NOLINT
-using std::chrono_literals::operator""min;      // NOLINT
-using std::chrono_literals::operator""h;        // NOLINT
 
 // TODO: 互斥
 class App {

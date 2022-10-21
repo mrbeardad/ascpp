@@ -1,4 +1,5 @@
 #include "utils/result.hpp"
+
 #include <iostream>
 #include <ostream>
 #include <system_error>
@@ -24,11 +25,13 @@ class Debug {
   Debug& operator=(Debug&& other) {
     id = other.id;
     std::cout << "move assingment: " << id << std::endl;
+    return *this;
   }
 
   Debug& operator=(const Debug& other) {
     id = other.id;
     std::cout << "copy assingment: " << id << std::endl;
+    return *this;
   }
 
   ~Debug() { std::cout << "destroy: " << id << std::endl; }
@@ -37,10 +40,10 @@ class Debug {
 };
 
 auto GetResult() -> ascpp::Result<Debug> {
-  ascpp::Result<Debug> d{};
-  d = 1;
-  std::cout << "fuck" << std::endl;
-  return d;
+  // ascpp::Result<Debug> d{};
+  // d = 1;
+  // std::cout << "fuck" << std::endl;
+  return 1;
 }
 
 auto TryToSolveError() -> ascpp::Result<Debug> {
@@ -86,6 +89,6 @@ TEST(TestResult, CouldCompile) {
   const ascpp::Result<int> cl{ec};
   EXPECT_ANY_THROW(cl.Unwrap());
   EXPECT_ANY_THROW(ascpp::Result<int>{ec}.Unwrap());
-  // GetResult();
+  // auto d = GetResult();
   // std::cout << d.Unwrap().id << std::endl;
 }
