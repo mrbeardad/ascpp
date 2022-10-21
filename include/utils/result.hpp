@@ -87,11 +87,14 @@ class [[nodiscard]] Result {
  *    TRY_UNWRAP(val, res);
  *
  */
-#define TRY_UNWRAP(var_name, result) \
-  if (!(result)) {                   \
-    return result;                   \
-  }                                  \
-  auto&(var_name) = (result).Unwrap();
+#define TRY_UNWRAP(...)              \
+  ({                                 \
+    auto _ascpp_res_ = __VA_ARGS__;  \
+    if (!_ascpp_res_) {              \
+      return _ascpp_res_;            \
+    }                                \
+    std::move(_ascpp_res_.Unwrap()); \
+  })
 
 }  // namespace ascpp
 
