@@ -3,10 +3,10 @@
 #include "gtest/gtest.h"
 
 TEST(TestMisc, GetAndSetEnv) {
-  EXPECT_FALSE(ascpp::GetEnv("null"));
+  EXPECT_FALSE(ascpp::GetEnv("null").IsOk());
 
   ascpp::SetEnv("empty", "");
-  EXPECT_FALSE(ascpp::GetEnv("empty"));
+  EXPECT_FALSE(ascpp::GetEnv("empty").IsOk());
 
   ascpp::SetEnv("hello", "world");
   EXPECT_EQ(ascpp::GetEnv("hello").Unwrap(), "world");

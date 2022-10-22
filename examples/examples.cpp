@@ -74,7 +74,7 @@ void filelock() {
 void config() {
   ascpp::Config cfg{&app, ascpp::Config::kUserConfig};
   cfg["fuck"] = "you";
-  cfg.WriteConfig();
+  cfg.WriteConfigToSys();
 }
 
 int main(int argc, const char** argv) {

@@ -18,7 +18,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Third party dependencies
-add_compile_definitions(ASIO_HAS_IO_URING=1)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_compile_definitions(ASIO_HAS_IO_URING=1)
+endif()
 include_directories(3rd_party/asio/asio/include)
 include_directories(3rd_party/cxxopts/include)
 add_compile_definitions(FMT_HEADER_ONLY=1)

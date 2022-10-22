@@ -1,17 +1,14 @@
 #include "utils/cmdline.hpp"
 
-#include <math.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
 
-#include "async/app.hpp"
+#include "app.hpp"
 
 namespace ascpp {
-
-ascpp::App app{"", "", "", ""};
 
 TEST(TestCmdline, BasicUsage) {
   ascpp::Cmdline cmdline{&app};

@@ -138,7 +138,7 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
 #endif
 }
 
-inline auto CreateFilePath(const std::filesystem::path& filepath) -> std::error_code {
+inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void> {
   std::error_code err{};
   auto result = std::filesystem::exists(filepath, err);
   if (err) {

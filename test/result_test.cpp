@@ -3,6 +3,7 @@
 #include <iostream>
 #include <ostream>
 #include <system_error>
+#include <utility>
 
 #include "gtest/gtest.h"
 
@@ -40,49 +41,38 @@ class Debug {
 };
 
 auto GetResult() -> ascpp::Result<Debug> {
-  // ascpp::Result<Debug> d{};
-  // d = 1;
-  // std::cout << "fuck" << std::endl;
   return 1;
 }
 
-auto TryToSolveError() -> ascpp::Result<Debug> {
-  auto res = GetResult();
-  if (res.IsErr()) {
-    res = Debug{500};
-  }
-  auto d = TRY_UNWRAP(res);
+auto GetVoidResult() -> ascpp::Result<void> {
+  return {};
+}
+
+auto UseUnwrapOr() -> ascpp::Result<Debug> {
+  auto d = GetResult().UnwrapOr(2);
+  std::cout << "return" << std::endl;
   return d;
 }
 
-auto TryToSolveErrorWithDefultValue() -> ascpp::Result<Debug> {
+auto UseUnwrapAssign() -> ascpp::Result<Debug> {
   auto res = GetResult();
-  std::cout << "returned 1" << std::endl;
-  if (res.IsErr()) {
-    res = Debug{2};
-  }
-  auto d = TRY_UNWRAP(res);
-  std::cout << "returned 2" << std::endl;
+  auto& d = res.UnwrapOrAssign(2);
+  std::cout << "return" << std::endl;
   return d;
 }
 
-auto ReturnErrorToUpper() -> ascpp::Result<Debug> {
-  auto res = TRY_UNWRAP(GetResult());
-  // auto result = GetResult();
-  // if (!result) {
-  //   return result;
-  // }
-  // auto& res = result.Unwrap();
-  // std::cout << "fuck" << std::endl;
-  return res;
+auto UseTryUnwrap() -> ascpp::Result<Debug> {
+  auto d = TRY_UNWRAP(GetResult());
+  std::cout << "return" << std::endl;
+  return d;
 }
 
-TEST(TestResult, CouldCompile) {
+TEST(TestResult, Unwrap) {
   ascpp::Result<int> lr{1};
   EXPECT_EQ(lr.Unwrap(), 1);
   EXPECT_EQ(lr.UnwrapOr(2), 1);
   EXPECT_EQ(lr.UnwrapOrAssign(2), 1);
-  const auto& clr{lr};
+  const auto& clr = lr;
   EXPECT_EQ(clr.Unwrap(), 1);
   EXPECT_EQ(clr.UnwrapOr(2), 1);
   EXPECT_EQ(ascpp::Result<int>{1}.Unwrap(), 1);
@@ -100,8 +90,94 @@ TEST(TestResult, CouldCompile) {
   const ascpp::Result<int> cl{ec};
   EXPECT_ANY_THROW(cl.Unwrap());
   EXPECT_ANY_THROW(ascpp::Result<int>{ec}.Unwrap());
+}
 
-  ascpp::Result<void> r{};
-  // auto d = ReturnErrorToUpper();
-  // std::cout << d.Unwrap().id << std::endl;
+TEST(TestResult, VoidUnwrap) {
+  ascpp::Result<void> lr{};
+  EXPECT_TRUE(lr.IsOk());
+  const auto& clr = lr;
+  EXPECT_TRUE(clr.IsOk());
+  EXPECT_TRUE(ascpp::Result<void>{}.IsOk());
+
+  auto ec = std::make_error_code(std::errc::io_error);
+  lr = ec;
+  EXPECT_EQ(lr.UnwrapErr(), ec);
+  EXPECT_ANY_THROW(lr.Unwrap());
+  const ascpp::Result<void> cl{ec};
+  EXPECT_ANY_THROW(cl.Unwrap());
+  EXPECT_ANY_THROW(ascpp::Result<void>{ec}.Unwrap());
+
+  ascpp::Result<int> int_res{1};
+  ascpp::Result<void> void_res{};
+
+  // ok int <- ok void
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.IsOk(), true);
+  int_res = void_res;
+  EXPECT_EQ(int_res.Unwrap(), 0);
+  EXPECT_EQ(void_res.IsOk(), true);
+
+  int_res = 1;
+
+  // ok int -> ok void
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.IsOk(), true);
+  void_res = int_res;
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.IsOk(), true);
+
+  void_res = ec;
+
+  // ok int <- err void
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.UnwrapErr(), ec);
+  int_res = void_res;
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.UnwrapErr(), ec);
+
+  int_res = 1;
+
+  // ok int -> err void
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.UnwrapErr(), ec);
+  void_res = int_res;
+  EXPECT_EQ(int_res.Unwrap(), 1);
+  EXPECT_EQ(void_res.IsOk(), true);
+
+  int_res = ec;
+
+  // err int <- ok void
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.IsOk(), true);
+  int_res = void_res;
+  EXPECT_EQ(int_res.Unwrap(), 0);
+  EXPECT_EQ(void_res.IsOk(), true);
+
+  int_res = ec;
+
+  // err int -> ok void
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.IsOk(), true);
+  void_res = int_res;
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.UnwrapErr(), ec);
+
+  auto ec2 = std::make_error_code(std::errc::executable_format_error);
+  void_res = ec2;
+
+  // err int <- err void
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.UnwrapErr(), ec2);
+  int_res = void_res;
+  EXPECT_EQ(int_res.UnwrapErr(), ec2);
+  EXPECT_EQ(void_res.UnwrapErr(), ec2);
+
+  int_res = ec;
+
+  // err int -> err void
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.UnwrapErr(), ec2);
+  void_res = int_res;
+  EXPECT_EQ(int_res.UnwrapErr(), ec);
+  EXPECT_EQ(void_res.UnwrapErr(), ec);
 }
