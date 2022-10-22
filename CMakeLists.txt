@@ -17,7 +17,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-# Third party dependencies add_compile_definitions(ASIO_HAS_IO_URING=1)
+# Third party dependencies
+add_compile_definitions(ASIO_HAS_IO_URING=1)
 include_directories(3rd_party/asio/asio/include)
 include_directories(3rd_party/cxxopts/include)
 add_compile_definitions(FMT_HEADER_ONLY=1)

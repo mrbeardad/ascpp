@@ -18,7 +18,7 @@
 
 #include "async/app.hpp"
 #include "nlohmann/json_fwd.hpp"
-#include "utils/directories.hpp"
+#include "utils/system.hpp"
 
 namespace ascpp {
 
@@ -29,11 +29,12 @@ class Config {
   // TODO: Notify confliction, modified obverser
   enum SyncOption { kForceRead = 1, kForceWrite };
 
-  explicit Config(App* app, ConfigType cfg_type)
-      : app_{app},
-        config_file_{
-            GetConfigDir().Unwrap() / app->GetOrgName()
-            / (app->GetAppName() + (cfg_type == kUserConfig ? "_user.json" : "_machine.json"))} {
+  explicit Config(App* app) : app_{app} {}
+
+  Init : app_{app},
+         config_file_{
+             GetConfigDir().Unwrap() / app->GetOrgName()
+             / (app->GetAppName() + (cfg_type == kUserConfig ? "_user.json" : "_machine.json"))} {
     CreateFilePath(config_file_);
     ReadConfig();
   }

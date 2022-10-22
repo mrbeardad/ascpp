@@ -99,17 +99,17 @@ inline auto GetConfigDir() -> Result<std::filesystem::path> {
   return GetEnv("APPDATA");
 #elif defined(__unix__) || defined(__linux__)
   auto dir = GetEnv("XDG_CONFIG_HOME");
-  if (dir) {
+  if (dir.IsOk()) {
     return dir;
   }
   dir = GetEnv("HOME");
-  if (dir) {
+  if (dir.IsOk()) {
     return fs::path{dir.Unwrap()} / ".config";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
   auto dir = GetEnv("HOME");
-  if (dir) {
+  if (dir.IsOk()) {
     return fs::path{dir.Unwrap()} / "Library/Application Support";
   }
   return dir;
@@ -121,16 +121,17 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
   return GetEnv("LOCALAPPDATA");
 #elif defined(__unix__) || defined(__linux__)
   auto dir = GetEnv("XDG_CACHE_HOME");
-  if (dir) {
+  if (dir.IsOk()) {
     return dir;
   }
   dir = GetEnv("HOME");
-  if (dir) {
+  if (dir.IsOk()) {
     return fs::path{dir.Unwrap()} / ".cache";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
-  if (auto dir = GetEnv("HOME"); dir) {
+  auto dir = GetEnv("HOME");
+  if (dir.IsOk()) {
     return fs::path{dir.Unwrap()} / "Library/Caches";
   }
   return dir;

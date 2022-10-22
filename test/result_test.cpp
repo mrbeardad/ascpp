@@ -48,7 +48,7 @@ auto GetResult() -> ascpp::Result<Debug> {
 
 auto TryToSolveError() -> ascpp::Result<Debug> {
   auto res = GetResult();
-  if (!res) {
+  if (res.IsErr()) {
     res = Debug{500};
   }
   auto d = TRY_UNWRAP(res);
@@ -58,7 +58,7 @@ auto TryToSolveError() -> ascpp::Result<Debug> {
 auto TryToSolveErrorWithDefultValue() -> ascpp::Result<Debug> {
   auto res = GetResult();
   std::cout << "returned 1" << std::endl;
-  if (!res) {
+  if (res.IsErr()) {
     res = Debug{2};
   }
   auto d = TRY_UNWRAP(res);
@@ -100,6 +100,8 @@ TEST(TestResult, CouldCompile) {
   const ascpp::Result<int> cl{ec};
   EXPECT_ANY_THROW(cl.Unwrap());
   EXPECT_ANY_THROW(ascpp::Result<int>{ec}.Unwrap());
+
+  ascpp::Result<void> r{};
   // auto d = ReturnErrorToUpper();
   // std::cout << d.Unwrap().id << std::endl;
 }

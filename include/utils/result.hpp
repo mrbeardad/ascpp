@@ -17,14 +17,14 @@ class [[nodiscard]] Result {
   Result() : var_{} {}
 
   template <typename U>
-    requires(std::is_convertible_v<U, T>)
-  Result(U&& val) : var_{std::forward<U>(val)} {}
+
+  requires(std::is_convertible_v<U, T>) Result(U&& val) : var_{std::forward<U>(val)} {}
 
   Result(std::error_code err) : var_{err} {}
 
   template <typename U>
-    requires(std::is_convertible_v<U, T>)
-  Result(Result<U> var) {
+
+  requires(std::is_convertible_v<U, T>) Result(Result<U> var) {
     if (var) {
       var_ = std::move(var.Unwrap());
     } else {
@@ -39,7 +39,7 @@ class [[nodiscard]] Result {
   ~Result() = default;
 
   auto Unwrap() const -> const T& {
-    if (var_.index() != 0) {
+    if (IsErr()) {
       throw std::system_error(UnwrapErr());
     }
     return std::get<T>(var_);
@@ -49,17 +49,17 @@ class [[nodiscard]] Result {
 
   template <typename U>
   auto UnwrapOr(U&& default_value) const& -> T {
-    return var_.index() != 0 ? std::forward<U>(default_value) : std::get<T>(var_);
+    return IsErr() ? std::forward<U>(default_value) : std::get<T>(var_);
   }
 
   template <typename U>
   auto UnwrapOr(U&& default_value) && -> T {
-    return var_.index() != 0 ? std::forward<U>(default_value) : std::move(std::get<T>(var_));
+    return IsErr() ? std::forward<U>(default_value) : std::move(std::get<T>(var_));
   }
 
   template <typename U>
   auto UnwrapOrAssign(U&& default_value) & -> T& {
-    if (var_.index() != 0) {
+    if (IsErr()) {
       var_ = std::forward<U>(default_value);
     }
     return std::get<T>(var_);
@@ -72,25 +72,21 @@ class [[nodiscard]] Result {
 
   auto UnwrapErr() const -> std::error_code { return std::get<std::error_code>(var_); }
 
-  explicit operator bool() { return var_.index() == 0; }
+  auto IsOk() const -> bool { return var_.index() == 0; }
+
+  auto IsErr() const -> bool { return var_.index(); }
 
  private:
   std::variant<T, std::error_code> var_;
 };
 
-/**
- * @brief Try to unwrap a result and define a reference named var_name, if result is an error, then
- * return to upper.
- *
- * the 2nd argument 'result' must be a lvalue, otherwise, an extra copy will be made.
- *    auto res = RetResult();
- *    TRY_UNWRAP(val, res);
- *
- */
+template <>
+class Result<void> {};
+
 #define TRY_UNWRAP(...)              \
   ({                                 \
     auto _ascpp_res_ = __VA_ARGS__;  \
-    if (!_ascpp_res_) {              \
+    if (_ascpp_res_.IsErr()) {       \
       return _ascpp_res_;            \
     }                                \
     std::move(_ascpp_res_.Unwrap()); \
