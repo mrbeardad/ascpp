@@ -8,12 +8,13 @@
 #include <system_error>
 #include <type_traits>
 #include <variant>
-#include "fmt/core.h"
 
 namespace ascpp {
 
 template <typename T>
 class Result;
+
+struct Void {};
 
 template <>
 class [[nodiscard]] Result<void> {
@@ -40,6 +41,16 @@ class [[nodiscard]] Result<void> {
   auto IsOk() const -> bool { return !err_; }
 
   auto IsErr() const -> bool { return static_cast<bool>(err_); }
+
+  template <typename Callable>
+    requires(std::is_same_v<std::invoke_result_t<Callable, Void>,
+                            std::invoke_result_t<Callable, std::error_code>>)
+  auto Match(Callable&& call) -> std::invoke_result_t<Callable, Void> {
+    if (IsOk()) {
+      return call(Void{});
+    }
+    return call(err_);
+  }
 
   auto Unwrap() const -> const std::error_code& {
     if (IsErr()) {
@@ -96,6 +107,11 @@ class [[nodiscard]] Result {
 
   auto IsErr() const -> bool { return var_.index(); }
 
+  template <typename Callable>
+  auto Match(Callable&& call) -> decltype(std::visit(call, std::variant<T, std::error_code>{})) {
+    return std::visit(call, var_);
+  }
+
   auto Unwrap() const -> const T& {
     if (IsErr()) {
       throw std::system_error(UnwrapErr());
@@ -142,6 +158,10 @@ class [[nodiscard]] Result {
     }                                \
     std::move(_ascpp_res_.Unwrap()); \
   })
+
+#define OK(arg)  if constexpr (!std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
+
+#define ERR(arg) else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
 
 }  // namespace ascpp
 

@@ -3,7 +3,9 @@
 #include <iostream>
 #include <ostream>
 #include <system_error>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 #include "gtest/gtest.h"
 
@@ -48,6 +50,31 @@ auto GetVoidResult() -> ascpp::Result<void> {
   return {};
 }
 
+auto UseMatch() -> ascpp::Result<Debug> {
+  auto d = GetResult();
+  std::cout << d.Match([](auto&& arg) {
+    OK(arg) {
+      return 1;
+    }
+    ERR(arg) {
+      return 2;
+    }
+    return 0;
+  });
+
+  auto v = GetVoidResult();
+  std::cout << v.Match([](auto&& arg) {
+    OK(arg) {
+      return "a";
+    }
+    ERR(arg) {
+      return "b";
+    }
+    return "c";
+  });
+  return {};
+}
+
 auto UseUnwrapOr() -> ascpp::Result<Debug> {
   auto d = GetResult().UnwrapOr(2);
   std::cout << "return" << std::endl;
@@ -64,7 +91,6 @@ auto UseUnwrapAssign() -> ascpp::Result<Debug> {
 auto UseTryUnwrap() -> ascpp::Result<Debug> {
   auto d = TRY_UNWRAP(GetResult());
   std::cout << "return" << std::endl;
-  return d;
 }
 
 TEST(TestResult, Unwrap) {
