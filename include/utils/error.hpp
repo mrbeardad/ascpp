@@ -8,9 +8,9 @@ namespace ascpp {
 template <typename T>
 class Error : public std::error_category {
  public:
-  static auto GetInstance() -> Error& {
-    static T ec{};
-    return ec;
+  static auto make_error_code(int ec) -> std::error_code {
+    static T err_cat{};
+    return {ec, err_cat};
   }
 
  protected:

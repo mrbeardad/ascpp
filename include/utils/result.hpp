@@ -52,11 +52,11 @@ class [[nodiscard]] Result<void> {
     return call(err_);
   }
 
-  auto Unwrap() const -> const std::error_code& {
+  auto Unwrap() const -> Void {
     if (IsErr()) {
       throw std::system_error(err_);
     }
-    return err_;
+    return {};
   }
 
   auto UnwrapErr() const -> const std::error_code& {
@@ -82,7 +82,7 @@ class [[nodiscard]] Result {
   Result(std::error_code err) : var_{err} {}
 
   template <typename U>
-    requires(std::is_convertible_v<U, T>)
+    requires(std::is_convertible_v<U, T> && !std::is_same_v<U, T>)
   Result(Result<U> other_res) {
     if (other_res.IsOk()) {
       var_ = std::move(other_res.Unwrap());

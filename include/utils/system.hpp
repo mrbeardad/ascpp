@@ -15,12 +15,12 @@
 
 namespace ascpp {
 
-class SystemError : public Error<SystemError> {
+class SysErr : public Error<SysErr> {
  public:
-  enum ErrorCode { kNoError, kGetEnvError, kGetEnvWithEmptyVale, kSetEnvError };
+  enum Errc { kNoError, kGetEnvError, kGetEnvWithEmptyVale, kSetEnvError };
 
-  SystemError() = default;
-  ~SystemError() override = default;
+  SysErr() = default;
+  ~SysErr() override = default;
 
   auto name() const noexcept -> const char* override { return "ascpp:system"; }
 
@@ -38,49 +38,45 @@ class SystemError : public Error<SystemError> {
   }
 };
 
-inline auto make_error_code(SystemError::ErrorCode ec) -> std::error_code {
-  return {ec, SystemError::GetInstance()};
-}
-
 inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
   size_t size{};
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
-    return make_error_code(SystemError::kGetEnvError);
+    return SysErr::make_error_code(SysErr::kGetEnvError);
   }
   if (size == 0) {
-    return make_error_code(SystemError::kGetEnvWithEmptyVale);
+    return SysErr::make_error_code(SysErr::kGetEnvWithEmptyVale);
   }
 
   std::string value(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return make_error_code(SystemError::kGetEnvError);
+    return SysErr::make_error_code(SysErr::kGetEnvError);
   }
   value.resize(size - 1);
   return value;
 #else
   auto* value = std::getenv(name.c_str());
   if (value == nullptr) {
-    return make_error_code(SystemError::kGetEnvError);
+    return SysErr::make_error_code(SysErr::kGetEnvError);
   }
   if (std::strlen(value) == 0) {
-    return make_error_code(SystemError::kGetEnvWithEmptyVale);
+    return SysErr::make_error_code(SysErr::kGetEnvWithEmptyVale);
   }
   return value;
 #endif
 }
 
-inline auto SetEnv(const std::string& name, const std::string& value) -> std::error_code {
+inline auto SetEnv(const std::string& name, const std::string& value) -> Result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
-    return make_error_code(SystemError::kSetEnvError);
+    return SysErr::make_error_code(SysErr::kSetEnvError);
   }
   return {};
 #else
   if (::setenv(name.c_str(), value.c_str(), 1)) {
-    return make_error_code(SystemError::kSetEnvError);
+    return SysErr::make_error_code(SysErr::kSetEnvError);
   }
   return {};
 #endif
@@ -163,6 +159,7 @@ inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void
   }
   return err;
 }
+
 }  // namespace ascpp
 
 #endif  // !ASCPP_UTILS_SYSTEM_HPP_
