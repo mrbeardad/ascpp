@@ -23,7 +23,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 include_directories(3rd_party/asio/asio/include)
 include_directories(3rd_party/cxxopts/include)
-include_directories(3rd_party/spdlog/include)
+# TODO: migrate to std::format when it is mature enough
 add_compile_definitions(FMT_HEADER_ONLY=1)
 include_directories(3rd_party/fmt/include)
 include_directories(3rd_party/nlohmannjson/include)

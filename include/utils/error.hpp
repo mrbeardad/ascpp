@@ -15,7 +15,7 @@ template <typename T>
 class Error : public std::error_category {
  public:
   static auto make_error_code(int ec) -> std::error_code {
-    static T err_cat{};
+    static auto err_cat = T{};
     return {ec, err_cat};
   }
 
@@ -28,7 +28,10 @@ template <typename T>
 class Result;
 
 struct Void {
-  static Void instance;
+  static auto GetInstance() -> const Void& {
+    static auto ins = Void{};
+    return ins;
+  }
 };
 
 template <>
@@ -67,11 +70,11 @@ class [[nodiscard]] Result<void> {
     return call(err_);
   }
 
-  auto Unwrap() const -> Void& {
+  auto Unwrap() const -> const Void& {
     if (IsErr()) {
       throw std::system_error(err_);
     }
-    return Void::instance;
+    return Void::GetInstance();
   }
 
   auto UnwrapErr() const -> const std::error_code& {

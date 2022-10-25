@@ -1,8 +1,6 @@
 #ifndef ASCPP_UTILS_LOG_HPP_
 #define ASCPP_UTILS_LOG_HPP_
 
-#include "spdlog/sinks/basic_file_sink.h"
-
 #include "async/app.hpp"
 
 namespace ascpp {
@@ -12,12 +10,11 @@ class Logger {
   Logger();
   Logger(Logger&&) = default;
   Logger(const Logger&) = default;
-  Logger& operator=(Logger&&) = default;
-  Logger& operator=(const Logger&) = default;
+  auto operator=(Logger&&) -> Logger& = default;
+  auto operator=(const Logger&) -> Logger& = default;
   ~Logger();
 
  private:
-  spdlog::logger logger_;
 };
 
 }  // namespace ascpp

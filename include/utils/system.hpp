@@ -1,6 +1,7 @@
 #ifndef ASCPP_UTILS_SYSTEM_HPP_
 #define ASCPP_UTILS_SYSTEM_HPP_
 
+#include <vcruntime.h>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -39,7 +40,7 @@ class SysErr : public Error<SysErr> {
 
 inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
-  size_t size{};
+  auto size = size_t{};
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
     return SysErr::make_error_code(SysErr::kGetEnvError);
@@ -48,7 +49,7 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
     return SysErr::make_error_code(SysErr::kGetEnvWithEmptyVale);
   }
 
-  std::string value(size, '\0');
+  auto value = std::string(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
     return SysErr::make_error_code(SysErr::kGetEnvError);
@@ -134,7 +135,7 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
 }
 
 inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void> {
-  std::error_code err{};
+  auto err = std::error_code{};
   auto result = std::filesystem::exists(filepath, err);
   if (err) {
     return err;
