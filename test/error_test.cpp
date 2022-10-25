@@ -1,4 +1,4 @@
-#include "utils/result.hpp"
+#include "utils/error.hpp"
 
 #include <iostream>
 #include <ostream>
@@ -90,6 +90,7 @@ auto UseUnwrapAssign() -> ascpp::Result<Debug> {
 
 auto UseTryUnwrap() -> ascpp::Result<Debug> {
   auto d = TRY_UNWRAP(GetResult());
+  TRY_UNWRAP(GetVoidResult());
   std::cout << "return" << std::endl;
 }
 

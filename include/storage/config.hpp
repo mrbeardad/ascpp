@@ -18,7 +18,7 @@
 
 #include "async/app.hpp"
 #include "nlohmann/json_fwd.hpp"
-#include "utils/result.hpp"
+#include "utils/error.hpp"
 #include "utils/system.hpp"
 
 namespace ascpp {
