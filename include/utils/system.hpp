@@ -1,5 +1,4 @@
-#ifndef ASCPP_UTILS_SYSTEM_HPP_
-#define ASCPP_UTILS_SYSTEM_HPP_
+#pragma once
 
 #include <vcruntime.h>
 #include <cstdlib>
@@ -161,5 +160,3 @@ inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void
 }
 
 }  // namespace ascpp
-
-#endif  // !ASCPP_UTILS_SYSTEM_HPP_

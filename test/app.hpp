@@ -1,8 +1,5 @@
-#ifndef ASCPP_TEST_APP_HPP_
-#define ASCPP_TEST_APP_HPP_
+#pragma once
 
-#include "async/app.hpp"
+#include "app/info.hpp"
 
-inline ascpp::App app{"ascpp", "ascpp", "ascpp", "0.1"};
-
-#endif  // !ASCPP_TEST_APP_HPP_
+inline ascpp::AppInfo app_info{"mrbeardad", "ascpp", "awesome cpp framework", "0.1"};

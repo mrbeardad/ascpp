@@ -15,14 +15,5 @@ add_subdirectory(fmt) # TODO: migrate to std::format when it is mature enough
 # (nlohmann_json::nlohmann_json) json parser
 add_subdirectory(nlohmannjson)
 
-# (glog::glog) log
-set(WITH_GFLAGS
-    OFF
-    CACHE BOOL "" FORCE)
-add_subdirectory(glog)
-
 # (GTest::gtest_main) unit test
-set(gtest_force_shared_crt
-    ON
-    CACHE BOOL "" FORCE)
 add_subdirectory(googletest)

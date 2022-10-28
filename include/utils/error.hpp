@@ -1,5 +1,4 @@
-#ifndef ASCPP_UTILS_ERROR_HPP_
-#define ASCPP_UTILS_ERROR_HPP_
+#pragma once
 
 #include <algorithm>
 #include <functional>
@@ -182,5 +181,3 @@ class [[nodiscard]] Result {
 #define ERR(arg) else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
 
 }  // namespace ascpp
-
-#endif  // !ASCPP_UTILS_ERROR_HPP_

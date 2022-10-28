@@ -1,5 +1,4 @@
-#ifndef ASCPP_UTILS_MISC_HPP_
-#define ASCPP_UTILS_MISC_HPP_
+#pragma once
 
 #include <chrono>
 #include <filesystem>
@@ -20,5 +19,3 @@ using std::chrono_literals::operator""min;      // NOLINT
 using std::chrono_literals::operator""h;        // NOLINT
 
 }  // namespace ascpp
-
-#endif  // !ASCPP_UTILS_MISC_HPP_

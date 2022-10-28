@@ -1,5 +1,4 @@
-#ifndef ASCPP_STORAGE_CONFIG_H_
-#define ASCPP_STORAGE_CONFIG_H_
+#pragma once
 
 #include <chrono>
 #include <filesystem>
@@ -16,7 +15,7 @@
 #include "fmt/chrono.h"
 #include "nlohmann/json.hpp"
 
-#include "async/app.hpp"
+#include "app/info.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include "utils/error.hpp"
 #include "utils/system.hpp"
@@ -30,9 +29,9 @@ class Config {
   // TODO: Notify confliction, modified obverser
   enum SyncOption { kForceRead = 1, kForceWrite };
 
-  auto Init(ConfigType cfg_type) -> Result<void> {
-    auto config_dir = TRY_UNWRAP(GetConfigDir()) / app_->GetOrgName();
-    auto config_file = app_->GetAppName() + (cfg_type == kUserConfig ? "_user" : "_machine");
+  auto Init(const AppInfo& app_info, ConfigType cfg_type) -> Result<void> {
+    auto config_dir = TRY_UNWRAP(GetConfigDir()) / app_info.org_name;
+    auto config_file = app_info.app_name + (cfg_type == kUserConfig ? "_user" : "_machine");
     config_path_ = config_dir / config_file;
     config_path_.replace_extension(".json");
     TRY_UNWRAP(CreateFilePath(config_path_));
@@ -41,7 +40,7 @@ class Config {
     return {};
   }
 
-  explicit Config(App* app) : app_{app} {}
+  Config() = default;
 
   ~Config() = default;
 
@@ -94,7 +93,6 @@ class Config {
   auto& operator[](const std::string& key) { return config_data_[key]; }
 
  private:
-  App* app_;
   std::shared_mutex mutex_;
   std::filesystem::path config_path_;
   nlohmann::json config_data_;
@@ -104,5 +102,3 @@ class Config {
 };
 
 }  // namespace ascpp
-
-#endif  // ASCPP_STORAGE_CONFIG_H_
