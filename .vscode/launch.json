@@ -10,16 +10,6 @@
       "program": "${workspaceFolder}/build/test/test",
       "args": [],
       "env": {}
-    },
-    {
-      "name": "debug example",
-      "type": "lldb",
-      "request": "launch",
-      "expressions": "native",
-      "initCommands": ["set set target.max-string-summary-length 10000"],
-      "program": "${workspaceFolder}/build/examples/examples",
-      "args": [],
-      "env": {}
     }
   ]
 }

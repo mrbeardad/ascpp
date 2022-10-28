@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.16)
 project(ascpp VERSION 0.1)
 
 # Global compile options
-include_directories(include)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,27 +16,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 endif()
 
-# Third party dependencies
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_compile_definitions(ASIO_HAS_IO_URING=1)
-endif()
-include_directories(3rd_party/asio/asio/include)
-include_directories(3rd_party/cxxopts/include)
-# TODO: migrate to std::format when it is mature enough
-add_compile_definitions(FMT_HEADER_ONLY=1)
-include_directories(3rd_party/fmt/include)
-include_directories(3rd_party/nlohmannjson/include)
-set(gtest_force_shared_crt
-    ON
-    CACHE BOOL "" FORCE)
-add_subdirectory(3rd_party/googletest)
-
-# Targets
+add_subdirectory(3rd_party)
 add_subdirectory(include)
 add_subdirectory(test)
-add_subdirectory(examples)
 
-# Tartget: doc
+# Generate Document by Doxygen
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
   set(DOXYGEN_EXCLUDE_PATTERNS */build/* */third_party/* */3rd_party/* */test/*)
@@ -55,5 +38,5 @@ if(DOXYGEN_FOUND)
   set(DOXYGEN_SOURCE_BROWSER YES)
   set(DOXYGEN_STRIP_CODE_COMMENTS NO)
   set(DOXYGEN_SORT_MEMBER_DOCS NO)
-  doxygen_add_docs(doc ${PROJECT_SOURCE_DIR} ALL)
+  doxygen_add_docs(doc ${PROJECT_SOURCE_DIR}/include ALL)
 endif()

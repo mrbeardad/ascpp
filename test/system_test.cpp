@@ -16,7 +16,7 @@ TEST(TestMisc, GetAndSetEnv) {
 }
 
 TEST(TestDirectories, Directories) {
-  std::cout << "GetHomeDir()  : " << ascpp::GetHomeDir().Unwrap() << std::endl;
-  std::cout << "GetConfigDir(): " << ascpp::GetConfigDir().Unwrap() << std::endl;
-  std::cout << "GetCacheDir() : " << ascpp::GetCacheDir().Unwrap() << std::endl;
+  // std::cout << "GetHomeDir()  : " << ascpp::GetHomeDir().Unwrap() << std::endl;
+  // std::cout << "GetConfigDir(): " << ascpp::GetConfigDir().Unwrap() << std::endl;
+  // std::cout << "GetCacheDir() : " << ascpp::GetCacheDir().Unwrap() << std::endl;
 }
