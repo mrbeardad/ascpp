@@ -3,19 +3,69 @@
 #include <stdlib.h>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <ostream>
 #include <ranges>
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
+#include <vector>
 
 #include "cxxopts.hpp"
 #include "fmt/ranges.h"
 
 #include "app/info.hpp"
+#include "nlohmann/detail/meta/type_traits.hpp"
 #include "utils/misc.hpp"
 
 namespace ascpp {
+
+template <typename T>
+concept SimpleArgument
+    = std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_convertible_v<T, std::string>;
+
+template <typename T>
+concept Argument = SimpleArgument<T>
+                   || (nlohmann::detail::is_specialization_of<std::vector, T>()
+                       && SimpleArgument<typename T::value_type>);
+
+template <typename T>
+struct OptionWithDefault : public T {};
+
+template <typename T,
+          std::optional<T> DEFAULT_VALUE = std::optional<T>{},
+          std::optional<T> IMPLICIT_VALUE = std::optional<T>{}>
+class Option {
+ public:
+  template <Argument T>
+  Option(std::string long_opt,
+         std::string opt_desc,
+         const T& default_value,
+         const T& implicit_value,
+         std::string opt_group = "");
+
+  template <Argument T>
+  Option(char shrot_opt,
+         std::string long_opt,
+         std::string opt_desc,
+         T* opt_arg,
+         std::string opt_group = "");
+
+  Option(Option&&) = default;
+  Option(const Option&) = default;
+  auto operator=(Option&&) -> Option& = default;
+  auto operator=(const Option&) -> Option& = default;
+  ~Option() = default;
+
+ private:
+  std::string short_option_;
+  std::string long_option_;
+  std::string option_desc_;
+  std::string option_group_;
+  std::optional<std::string> default_value_;
+  std::optional<std::string> implicit_value_;
+};
 
 class Cmdline {
  public:
@@ -32,20 +82,20 @@ class Cmdline {
   ~Cmdline() = default;
 
   template <typename T>
-  auto AddOption(const std::string& long_option, const std::string& description) -> void {
+  auto AddOption(const std::string& long_option, const std::string& description) -> Cmdline& {
     options_.add_options()(long_option, description, cxxopts::value<T>());
   }
 
   template <typename T>
   auto AddOption(char short_option, const std::string& long_option, const std::string& description)
-      -> void {
+      -> Cmdline& {
     options_.add_options()(short_option + ","s + long_option, description, cxxopts::value<T>());
   }
 
   template <typename T>
   auto AddOptionWithDefault(const std::string& long_option,
                             const std::string& description,
-                            T&& default_value) -> void {
+                            T&& default_value) -> Cmdline& {
     options_.add_options()(long_option, description,
                            cxxopts::value<T>()->default_value(fmt::to_string(default_value)));
   }
@@ -54,7 +104,7 @@ class Cmdline {
     requires(!std::is_convertible_v<T, std::string>)
   auto AddOptionWithDefault(const std::string& long_option,
                             const std::string& description,
-                            T&& default_value) -> void {
+                            T&& default_value) -> Cmdline& {
     options_.add_options()(
         long_option, description,
         cxxopts::value<T>()->default_value(fmt::to_string(fmt::join(default_value, ","))));
@@ -64,7 +114,7 @@ class Cmdline {
   auto AddOptionWithDefault(char short_option,
                             const std::string& long_option,
                             const std::string& description,
-                            T&& default_value) -> void {
+                            T&& default_value) -> Cmdline& {
     options_.add_options()(short_option + ","s + long_option, description,
                            cxxopts::value<T>()->default_value(fmt::to_string(default_value)));
   }
@@ -74,7 +124,7 @@ class Cmdline {
   auto AddOptionWithDefault(char short_option,
                             const std::string& long_option,
                             const std::string& description,
-                            T&& default_value) -> void {
+                            T&& default_value) -> Cmdline& {
     options_.add_options()(
         short_option + ","s + long_option, description,
         cxxopts::value<T>()->default_value(fmt::to_string(fmt::join(default_value, ","))));
@@ -83,7 +133,7 @@ class Cmdline {
   template <typename T>
   auto AddOptionWithImplicit(const std::string& long_option,
                              const std::string& description,
-                             T&& implicit_value) -> void {
+                             T&& implicit_value) -> Cmdline& {
     options_.add_options()(long_option, description,
                            cxxopts::value<T>()->implicit_value(fmt::to_string(implicit_value)));
   }
@@ -92,7 +142,7 @@ class Cmdline {
     requires(!std::is_convertible_v<T, std::string>)
   auto AddOptionWithImplicit(const std::string& long_option,
                              const std::string& description,
-                             T&& implicit_value) -> void {
+                             T&& implicit_value) -> Cmdline& {
     options_.add_options()(
         long_option, description,
         cxxopts::value<T>()->implicit_value(fmt::to_string(fmt::join(implicit_value, ","))));
@@ -102,7 +152,7 @@ class Cmdline {
   auto AddOptionWithImplicit(char short_option,
                              const std::string& long_option,
                              const std::string& description,
-                             T&& implicit_value) -> void {
+                             T&& implicit_value) -> Cmdline& {
     options_.add_options()(short_option + ","s + long_option, description,
                            cxxopts::value<T>()->implicit_value(fmt::to_string(implicit_value)));
   }
@@ -112,7 +162,7 @@ class Cmdline {
   auto AddOptionWithImplicit(char short_option,
                              const std::string& long_option,
                              const std::string& description,
-                             T&& implicit_value) -> void {
+                             T&& implicit_value) -> Cmdline& {
     options_.add_options()(
         short_option + ","s + long_option, description,
         cxxopts::value<T>()->implicit_value(fmt::to_string(fmt::join(implicit_value, ","))));
@@ -122,7 +172,7 @@ class Cmdline {
   auto AddOptionWithBoth(const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
-                         T&& implicit_value) -> void {
+                         T&& implicit_value) -> Cmdline& {
     options_.add_options()(long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(default_value))
@@ -134,7 +184,7 @@ class Cmdline {
   auto AddOptionWithBoth(const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
-                         T&& implicit_value) -> void {
+                         T&& implicit_value) -> Cmdline& {
     options_.add_options()(long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(fmt::join(default_value, ",")))
@@ -146,7 +196,7 @@ class Cmdline {
                          const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
-                         T&& implicit_value) -> void {
+                         T&& implicit_value) -> Cmdline& {
     options_.add_options()(short_option + ","s + long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(default_value))
@@ -159,7 +209,7 @@ class Cmdline {
                          const std::string& long_option,
                          const std::string& description,
                          T&& default_value,
-                         T&& implicit_value) -> void {
+                         T&& implicit_value) -> Cmdline& {
     options_.add_options()(short_option + ","s + long_option, description,
                            cxxopts::value<T>()
                                ->default_value(fmt::to_string(fmt::join(default_value, ",")))

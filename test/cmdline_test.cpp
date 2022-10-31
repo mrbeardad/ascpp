@@ -8,8 +8,6 @@
 
 #include "app.hpp"
 
-namespace ascpp {
-
 TEST(TestCmdline, BasicUsage) {
   ascpp::Cmdline cmdline{&app_info};
   cmdline.AddOption<std::string>('s', "str", "");
@@ -449,4 +447,13 @@ TEST(TestCmdline, AddVectorOption) {
   EXPECT_EQ(cmdline.Get<std::vector<std::string>>("vector"), values);
 }
 
-}  // namespace ascpp
+TEST(TestCmdline, HelpAndVersionOption) {
+  ascpp::Cmdline option{&app_info};
+  std::vector<const char*> argv{};
+
+  // argv = {"ascpp", "--help"};
+  // option.Parse(argv.size(), argv.data());
+
+  // argv = {"ascpp", "--version"};
+  // option.Parse(argv.size(), argv.data());
+}
