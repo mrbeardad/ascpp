@@ -16,32 +16,32 @@ TEST(TestCmdline, BasicUsage) {
   std::vector<std::string> unmatched{};
 
   argv = {"ascpp", "-shello"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "hello");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
 
   argv = {"ascpp", "-s", "hello"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "hello");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
 
   argv = {"ascpp", "--str=hello"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "hello");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
 
   argv = {"ascpp", "--str=hello", "world"};
   unmatched = {"world"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline.GetUnmatched(), unmatched);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
 
   argv = {"ascpp", "--str=hello", "--str=world"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "world");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
 
   argv = {"ascpp", "--str=hello", "--", "--str=world"};
   unmatched = {"--str=world"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline.GetUnmatched(), unmatched);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
 }
 
 TEST(TestCmdline, AddBoolOption) {
@@ -61,68 +61,68 @@ TEST(TestCmdline, AddBoolOption) {
 
   // bool has default default_value: false
   argv = {"ascpp"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("b"), false);
-  EXPECT_EQ(cmdline.GetArg<bool>("short_b"), false);
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), false);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("b"), false);
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("short_b"), false);
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
 
   // set default_value to true
   argv = {"ascpp"};
-  cmdline_default.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetArg<bool>("b"), true);
-  EXPECT_EQ(cmdline_default.GetArg<bool>("short_b"), true);
-  EXPECT_EQ(cmdline_default.GetArg<bool>("bool"), true);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<bool>("b"), true);
-  EXPECT_EQ(cmdline_both.GetArg<bool>("short_b"), true);
-  EXPECT_EQ(cmdline_both.GetArg<bool>("bool"), true);
+  cmdline_default.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("b"), true);
+  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("short_b"), true);
+  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("bool"), true);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("b"), true);
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("short_b"), true);
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("bool"), true);
 
   // bool has default implicit_value: true
   argv = {"ascpp", "-b"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("b"), true);
-  EXPECT_EQ(cmdline.GetArg<bool>("short_b"), true);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("b"), true);
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("short_b"), true);
   argv = {"ascpp", "--bool"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), true);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
 
   // set implicit_value to false
   argv = {"ascpp", "-b"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<bool>("b"), false);
-  EXPECT_EQ(cmdline_implicit.GetArg<bool>("short_b"), false);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<bool>("b"), false);
-  EXPECT_EQ(cmdline_both.GetArg<bool>("short_b"), false);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("b"), false);
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("short_b"), false);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("b"), false);
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("short_b"), false);
   argv = {"ascpp", "--bool"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<bool>("bool"), false);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<bool>("bool"), false);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("bool"), false);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("bool"), false);
 
   // unable to set the value of short options that has implicit_value
   argv = {"ascpp", "-btrue"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-bfalse"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-b", "true"};
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), true);
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
   argv = {"ascpp", "-b", "false"};
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), true);
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
 
   // set the value of the long option
   argv = {"ascpp", "--bool=true"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), true);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
   argv = {"ascpp", "--bool=1"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), true);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
   argv = {"ascpp", "--bool=false"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), false);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
   argv = {"ascpp", "--bool=0"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<bool>("bool"), false);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
 }
 
 TEST(TestCmdline, AddIntOption) {
@@ -142,67 +142,67 @@ TEST(TestCmdline, AddIntOption) {
 
   // without default_value
   argv = {"ascpp"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetArg<int>("i"));
-  EXPECT_ANY_THROW(cmdline.GetArg<int>("short_i"));
-  EXPECT_ANY_THROW(cmdline.GetArg<int>("int"));
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("i"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("short_i"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("int"));
 
   // with default_value 11
   argv = {"ascpp"};
-  cmdline_default.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetArg<int>("i"), 11);
-  EXPECT_EQ(cmdline_default.GetArg<int>("short_i"), 11);
-  EXPECT_EQ(cmdline_default.GetArg<int>("int"), 11);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<int>("i"), 11);
-  EXPECT_EQ(cmdline_both.GetArg<int>("short_i"), 11);
-  EXPECT_EQ(cmdline_both.GetArg<int>("int"), 11);
+  cmdline_default.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_default.GetOptionValue<int>("i"), 11);
+  EXPECT_EQ(cmdline_default.GetOptionValue<int>("short_i"), 11);
+  EXPECT_EQ(cmdline_default.GetOptionValue<int>("int"), 11);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("i"), 11);
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("short_i"), 11);
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("int"), 11);
 
   // without implicit_value
   argv = {"ascpp", "-i"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "--int"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
 
   // with implicit_value 11
   argv = {"ascpp", "-i"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<int>("i"), 11);
-  EXPECT_EQ(cmdline_implicit.GetArg<int>("short_i"), 11);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<int>("i"), 11);
-  EXPECT_EQ(cmdline_both.GetArg<int>("short_i"), 11);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("i"), 11);
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("short_i"), 11);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("i"), 11);
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("short_i"), 11);
   argv = {"ascpp", "--int"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<int>("int"), 11);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<int>("int"), 11);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("int"), 11);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<int>("int"), 11);
 
   // set the value of short option without implicit value
   argv = {"ascpp", "-i22"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<int>("i"), 22);
-  EXPECT_EQ(cmdline.GetArg<int>("short_i"), 22);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<int>("i"), 22);
+  EXPECT_EQ(cmdline.GetOptionValue<int>("short_i"), 22);
   argv = {"ascpp", "-i", "22"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<int>("i"), 22);
-  EXPECT_EQ(cmdline.GetArg<int>("short_i"), 22);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<int>("i"), 22);
+  EXPECT_EQ(cmdline.GetOptionValue<int>("short_i"), 22);
 
   // unable to set the value of short option that has implicit_value
   argv = {"ascpp", "-i22"};
-  EXPECT_ANY_THROW(cmdline_implicit.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-i", "22"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<int>("i"), 11);
-  EXPECT_EQ(cmdline_implicit.GetArg<int>("short_i"), 11);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("i"), 11);
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("short_i"), 11);
 
   // set the argument of the long option
   argv = {"ascpp", "--int=22"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<int>("int"), 22);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<int>("int"), 22);
 
   argv = {"ascpp", "--int=nan"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
 }
 
 TEST(TestCmdline, AddFloatOption) {
@@ -222,64 +222,64 @@ TEST(TestCmdline, AddFloatOption) {
 
   // without default_value
   argv = {"ascpp"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetArg<float>("f"));
-  EXPECT_ANY_THROW(cmdline.GetArg<float>("short_f"));
-  EXPECT_ANY_THROW(cmdline.GetArg<float>("float"));
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("f"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("short_f"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("float"));
 
   // with default_value 1.1
   argv = {"ascpp"};
-  cmdline_default.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_default.GetArg<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_default.GetArg<float>("short_f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_default.GetArg<float>("float"), 1.1);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("short_f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("float"), 1.1);
+  cmdline_default.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("short_f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("float"), 1.1);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("short_f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("float"), 1.1);
 
   // without implicit_value
   argv = {"ascpp", "-f"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "--float"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
 
   // with implicit_value 1.1
   argv = {"ascpp", "-f"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetArg<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetArg<float>("short_f"), 1.1);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("short_f"), 1.1);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("short_f"), 1.1);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("short_f"), 1.1);
   argv = {"ascpp", "--float"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetArg<float>("float"), 1.1);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetArg<float>("float"), 1.1);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("float"), 1.1);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("float"), 1.1);
 
   // set the value of short option without implicit value
   argv = {"ascpp", "-f2.2"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetArg<float>("f"), 2.2);
-  EXPECT_FLOAT_EQ(cmdline.GetArg<float>("short_f"), 2.2);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("f"), 2.2);
+  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("short_f"), 2.2);
   argv = {"ascpp", "-f", "2.2"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetArg<float>("f"), 2.2);
-  EXPECT_FLOAT_EQ(cmdline.GetArg<float>("short_f"), 2.2);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("f"), 2.2);
+  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("short_f"), 2.2);
 
   // unable to set the value of short option that has implicit_value
   argv = {"ascpp", "-f2.2"};
-  EXPECT_ANY_THROW(cmdline_implicit.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-f", "2.2"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetArg<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetArg<float>("short_f"), 1.1);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("f"), 1.1);
+  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("short_f"), 1.1);
 
   // set the argument of the long option
   argv = {"ascpp", "--float=2.2"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetArg<float>("float"), 2.2);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("float"), 2.2);
 }
 
 TEST(TestCmdline, AddStringOption) {
@@ -299,64 +299,64 @@ TEST(TestCmdline, AddStringOption) {
 
   // without default_value
   argv = {"ascpp"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetArg<std::string>("s"));
-  EXPECT_ANY_THROW(cmdline.GetArg<std::string>("short_s"));
-  EXPECT_ANY_THROW(cmdline.GetArg<std::string>("string"));
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("s"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("short_s"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("string"));
 
   // with default_value "hello"
   argv = {"ascpp"};
-  cmdline_default.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_default.GetArg<std::string>("short_s"), "hello");
-  EXPECT_EQ(cmdline_default.GetArg<std::string>("string"), "hello");
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("short_s"), "hello");
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("string"), "hello");
+  cmdline_default.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("short_s"), "hello");
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("string"), "hello");
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("short_s"), "hello");
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("string"), "hello");
 
   // without implicit_value
   argv = {"ascpp", "-s"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "--string"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
 
   // with implicit_value "hello"
   argv = {"ascpp", "-s"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_implicit.GetArg<std::string>("short_s"), "hello");
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("short_s"), "hello");
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("short_s"), "hello");
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("short_s"), "hello");
   argv = {"ascpp", "--string"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::string>("string"), "hello");
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::string>("string"), "hello");
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("string"), "hello");
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("string"), "hello");
 
   // set the value of short option without implicit value
   argv = {"ascpp", "-sworld"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "world");
-  EXPECT_EQ(cmdline.GetArg<std::string>("short_s"), "world");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("short_s"), "world");
   argv = {"ascpp", "-s", "world"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("s"), "world");
-  EXPECT_EQ(cmdline.GetArg<std::string>("short_s"), "world");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("short_s"), "world");
 
   // unable to set the value of short option that has implicit_value
   argv = {"ascpp", "-sworld"};
-  EXPECT_ANY_THROW(cmdline_implicit.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-s", "world"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_implicit.GetArg<std::string>("short_s"), "hello");
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("s"), "hello");
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("short_s"), "hello");
 
   // set the argument of the long option
   argv = {"ascpp", "--string=world"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::string>("string"), "world");
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::string>("string"), "world");
 }
 
 TEST(TestCmdline, AddVectorOption) {
@@ -381,71 +381,71 @@ TEST(TestCmdline, AddVectorOption) {
 
   // without default_value
   argv = {"ascpp"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetArg<std::vector<std::string>>("V"));
-  EXPECT_ANY_THROW(cmdline.GetArg<std::vector<std::string>>("short_v"));
-  EXPECT_ANY_THROW(cmdline.GetArg<std::vector<std::string>>("vector"));
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("V"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("short_v"));
+  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("vector"));
 
   // with default_value {"a","b","c"}
   argv = {"ascpp"};
-  cmdline_default.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_default.GetArg<std::vector<std::string>>("short_v"), values);
-  EXPECT_EQ(cmdline_default.GetArg<std::vector<std::string>>("vector"), values);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("short_v"), values);
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("vector"), values);
+  cmdline_default.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("short_v"), values);
+  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("vector"), values);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("short_v"), values);
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("vector"), values);
 
   // without implicit_value
   argv = {"ascpp", "-V"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "--vector"};
-  EXPECT_ANY_THROW(cmdline.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
 
   // with implicit_value {"a","b","c"}
   argv = {"ascpp", "-V"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_implicit.GetArg<std::vector<std::string>>("short_v"), values);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("short_v"), values);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("short_v"), values);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("short_v"), values);
   argv = {"ascpp", "--vector"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::vector<std::string>>("vector"), values);
-  cmdline_both.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetArg<std::vector<std::string>>("vector"), values);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("vector"), values);
+  cmdline_both.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("vector"), values);
 
   // set the value of short option without implicit value
   argv = {"ascpp", "-Va,b,c"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("short_v"), values);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("short_v"), values);
   argv = {"ascpp", "-V", "a,b,c"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("short_v"), values);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("short_v"), values);
 
   // unable to set the value of short option that has implicit_value
   argv = {"ascpp", "-Vx,y,z"};
-  EXPECT_ANY_THROW(cmdline_implicit.Parse(argv.size(), argv.data()));
+  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
   argv = {"ascpp", "-V", "x,y,z"};
-  cmdline_implicit.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetArg<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_implicit.GetArg<std::vector<std::string>>("short_v"), values);
+  cmdline_implicit.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("V"), values);
+  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("short_v"), values);
 
   // set the argument of the long option
   argv = {"ascpp", "--vector=a,b,c"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("vector"), values);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
   argv = {"ascpp", "--vector=a,b,c,"};
-  cmdline.Parse(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("vector"), values);
+  cmdline.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
   argv = {"ascpp", "--vector=a,b,c,,"};
-  cmdline.Parse(argv.size(), argv.data());
+  cmdline.ParseArgs(argv.size(), argv.data());
   values.emplace_back("");
-  EXPECT_EQ(cmdline.GetArg<std::vector<std::string>>("vector"), values);
+  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
 }
 
 TEST(TestCmdline, AddPositionalOption) {
@@ -458,27 +458,27 @@ TEST(TestCmdline, AddPositionalOption) {
   option.AddOption<std::vector<std::string>>("c", "", true);
 
   argv = {"ascpp", "a", "b", "c"};
-  option.Parse(argv.size(), argv.data());
-  EXPECT_EQ(option.GetArg<std::string>("a"), "a");
-  EXPECT_EQ(option.GetArg<std::string>("b"), "b");
+  option.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
+  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
   value = {"c"};
-  EXPECT_EQ(option.GetArg<std::vector<std::string>>("c"), value);
+  EXPECT_EQ(option.GetOptionValue<std::vector<std::string>>("c"), value);
 
   argv = {"ascpp", "a", "b", "c", "d"};
-  option.Parse(argv.size(), argv.data());
-  EXPECT_EQ(option.GetArg<std::string>("a"), "a");
-  EXPECT_EQ(option.GetArg<std::string>("b"), "b");
+  option.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
+  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
   value = {"c", "d"};
-  EXPECT_EQ(option.GetArg<std::vector<std::string>>("c"), value);
+  EXPECT_EQ(option.GetOptionValue<std::vector<std::string>>("c"), value);
 
   // FIXME: should throw when there is no positional arguments for option c
   argv = {"ascpp", "a", "b"};
   // EXPECT_ANY_THROW(option.Parse(argv.size(), argv.data()));
-  option.Parse(argv.size(), argv.data());
-  EXPECT_EQ(option.GetArg<std::string>("a"), "a");
-  EXPECT_EQ(option.GetArg<std::string>("b"), "b");
+  option.ParseArgs(argv.size(), argv.data());
+  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
+  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
   value = {};
-  EXPECT_ANY_THROW(option.GetArg<std::vector<std::string>>("c"));
+  EXPECT_ANY_THROW(option.GetOptionValue<std::vector<std::string>>("c"));
 }
 
 TEST(TestCmdline, HelpAndVersionOption) {

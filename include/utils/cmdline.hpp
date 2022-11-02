@@ -30,8 +30,6 @@ concept MultiArg
 template <typename T>
 concept SingleOrMultiArg = SingleArg<T> || MultiArg<T>;
 
-namespace {
-
 inline auto ToString(const std::string& s) -> const std::string& {
   return s;
 }
@@ -46,12 +44,10 @@ auto ToString(const T& v) -> std::string {
   return fmt::to_string(fmt::join(v, ","));
 }
 
-}  // namespace
-
 class Cmdline {
  public:
   explicit Cmdline(const AppInfo* app_info)
-      : app_info_{app_info}, options_{app_info->app_name, app_info->app_desc} {
+      : app_info_{app_info}, options_{app_info->AppName(), app_info->AppDescription()} {
     options_.add_options()("h,help", "display usage information");
     options_.add_options()("v,version", "output version number");
   }
@@ -183,8 +179,8 @@ class Cmdline {
     return *this;
   }
 
-  auto Parse(int argc, const char** argv) -> void {
-    if (positional_options_.size() > 0) {
+  auto ParseArgs(int argc, const char** argv) -> void {
+    if (!positional_options_.empty()) {
       options_.parse_positional(positional_options_);
     }
     result_ = options_.parse(argc, argv);
@@ -193,17 +189,17 @@ class Cmdline {
       std::exit(0);
     }
     if (result_.count("version")) {
-      std::cout << app_info_->app_version << std::endl;
+      std::cout << app_info_->AppVersion() << std::endl;
       std::exit(0);
     }
   }
 
   template <typename T>
-  auto GetArg(const std::string& option) const& -> const T& {
+  auto GetOptionValue(const std::string& option) const& -> const T& {
     return result_[option].as<T>();
   }
 
-  auto GetUnmatched() const& -> const std::vector<std::string>& { return result_.unmatched(); }
+  auto GetUnmatchedArgs() const& -> const std::vector<std::string>& { return result_.unmatched(); }
 
  private:
   const AppInfo* app_info_;

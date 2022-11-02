@@ -2,6 +2,7 @@ file(
   GLOB_RECURSE SOURCES
   LIST_DIRECTORIES false
   CONFIGURE_DEPENDS *.cpp)
+# TODO: convert to dll (SHARED)
 add_library(ascpp ${SOURCES})
 add_library(ascpp::ascpp ALIAS ascpp)
 target_include_directories(ascpp PUBLIC .)

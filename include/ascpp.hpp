@@ -8,18 +8,28 @@
 #include "utils/cmdline.hpp"
 #include "utils/error.hpp"
 
+// TODO: detect single app
 namespace ascpp {
 
-inline auto app = std::optional<AppInfo>{};
-inline auto cmd = std::optional<Cmdline>{};
+struct AppConfig {
+  std::string org_name;
+  std::string app_name;
+  std::string app_desc;
+  std::string app_version;
+};
 
-inline auto Init(std::string org_name,
-                 std::string app_name,
-                 std::string app_desc,
-                 std::string app_version) -> Result<void> {
-  app = AppInfo{std::move(org_name), std::move(app_name), std::move(app_desc),
-                std::move(app_version)};
-  cmd = Cmdline{&app.value()};
-}
+class App : public AppInfo, public Cmdline {
+ public:
+  explicit App(AppConfig config)
+      : AppInfo{std::move(config.org_name), std::move(config.app_name), std::move(config.app_desc),
+                std::move(config.app_version)},
+        Cmdline{static_cast<AppInfo*>(this)} {}
+
+  App(App&&) = default;
+  App(const App&) = default;
+  auto operator=(App&&) -> App& = default;
+  auto operator=(const App&) -> App& = default;
+  ~App() = default;
+};
 
 }  // namespace ascpp

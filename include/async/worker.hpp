@@ -4,7 +4,6 @@
 
 namespace ascpp {
 
-// TODO: 互斥
 class Worker {
  public:
   Worker();
