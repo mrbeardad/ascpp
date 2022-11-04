@@ -1,14 +1,18 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
+#include <string>
 #include "spdlog/logger.h"
-#include "spdlog/spdlog.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace ascpp {
 
 class Logger {
  public:
-  explicit Logger(spdlog::logger logger) : logger_{std::move(logger)} {}
+ private:
+  explicit Logger(std::shared_ptr<spdlog::logger> logger) : logger_{std::move(logger)} {}
 
   Logger(Logger&&) = default;
   Logger(const Logger&) = default;
@@ -16,8 +20,10 @@ class Logger {
   auto operator=(const Logger&) -> Logger& = default;
   ~Logger() = default;
 
+  auto LogInfo(std::string msg) -> void { logger_->info(msg); }
+
  private:
-  spdlog::logger logger_;
+  std::shared_ptr<spdlog::logger> logger_;
 };
 
 }  // namespace ascpp
