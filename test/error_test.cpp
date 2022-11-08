@@ -15,7 +15,7 @@ class Debug {
 
   Debug(int i) : id{i} { std::cout << "construct: " << id << std::endl; }
 
-  Debug(Debug&& other) {
+  Debug(Debug&& other) noexcept {
     id = other.id;
     std::cout << "move construct: " << id << std::endl;
   }
@@ -25,13 +25,13 @@ class Debug {
     std::cout << "copy construct: " << id << std::endl;
   }
 
-  Debug& operator=(Debug&& other) {
+  auto operator=(Debug&& other) noexcept -> Debug& {
     id = other.id;
     std::cout << "move assingment: " << id << std::endl;
     return *this;
   }
 
-  Debug& operator=(const Debug& other) {
+  auto operator=(const Debug& other) -> Debug& {
     id = other.id;
     std::cout << "copy assingment: " << id << std::endl;
     return *this;
@@ -117,6 +117,11 @@ TEST(TestResult, Unwrap) {
   const ascpp::Result<int> cl{ec};
   EXPECT_ANY_THROW(cl.Unwrap());
   EXPECT_ANY_THROW(ascpp::Result<int>{ec}.Unwrap());
+
+  ec = std::error_code{};
+  lr = 1;
+  lr = ec;
+  EXPECT_EQ(lr.Unwrap(), 0);
 }
 
 TEST(TestResult, VoidUnwrap) {

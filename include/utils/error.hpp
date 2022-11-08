@@ -20,6 +20,8 @@ class Error : public std::error_category {
 
  protected:
   Error() = default;
+
+ public:
   ~Error() override = default;
 };
 
@@ -96,7 +98,13 @@ class [[nodiscard]] Result {
     requires(std::is_convertible_v<U, T>)
   Result(U&& val) : var_{std::forward<U>(val)} {}
 
-  Result(std::error_code err) : var_{err} {}
+  Result(std::error_code err) {
+    if (err) {
+      var_ = err;
+    } else {
+      var_ = T{};
+    }
+  }
 
   template <typename U>
     requires(std::is_convertible_v<U, T> && !std::is_same_v<U, T>)

@@ -140,7 +140,7 @@ inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void
     return err;
   }
   if (result) {
-    return err;
+    return {};
   }
   result = std::filesystem::exists(filepath.parent_path(), err);
   if (err) {
@@ -152,11 +152,13 @@ inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void
       return err;
     }
   }
-  const std::ofstream out{filepath};
-  if (!out) {
-    return std::make_error_code(static_cast<std::errc>(errno));
+  if (filepath.has_filename()) {
+    const std::ofstream out{filepath};
+    if (!out) {
+      return std::make_error_code(static_cast<std::errc>(errno));
+    }
   }
-  return err;
+  return {};
 }
 
 }  // namespace ascpp

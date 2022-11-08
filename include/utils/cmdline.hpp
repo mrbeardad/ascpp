@@ -58,6 +58,7 @@ class Cmdline {
   auto operator=(const Cmdline&) -> Cmdline& = default;
   ~Cmdline() = default;
 
+  // TODO: add enum value (unordered_set)
   template <SingleOrMultiArg T>
   auto AddOption(const std::string& long_opt,
                  const std::string& opt_desc,
