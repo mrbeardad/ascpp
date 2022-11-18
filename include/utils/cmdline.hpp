@@ -15,7 +15,6 @@
 #include "nlohmann/detail/meta/type_traits.hpp"
 
 #include "app/info.hpp"
-#include "utils/misc.hpp"
 
 namespace ascpp {
 
@@ -30,6 +29,8 @@ concept MultiArg
 template <typename T>
 concept SingleOrMultiArg = SingleArg<T> || MultiArg<T>;
 
+namespace detail {
+
 inline auto ToString(const std::string& s) -> const std::string& {
   return s;
 }
@@ -43,6 +44,8 @@ template <MultiArg T>
 auto ToString(const T& v) -> std::string {
   return fmt::to_string(fmt::join(v, ","));
 }
+
+}  // namespace detail
 
 class Cmdline {
  public:
@@ -92,7 +95,7 @@ class Cmdline {
                             bool positional = false,
                             const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, "", long_opt, opt_desc,
-                        cxxopts::value<T>()->default_value(ToString(default_value)), "");
+                        cxxopts::value<T>()->default_value(detail::ToString(default_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
     }
@@ -107,7 +110,7 @@ class Cmdline {
                             bool positional = false,
                             const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
-                        cxxopts::value<T>()->default_value(ToString(default_value)), "");
+                        cxxopts::value<T>()->default_value(detail::ToString(default_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
     }
@@ -121,7 +124,7 @@ class Cmdline {
                              bool positional = false,
                              const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, "", long_opt, opt_desc,
-                        cxxopts::value<T>()->implicit_value(ToString(implicit_value)), "");
+                        cxxopts::value<T>()->implicit_value(detail::ToString(implicit_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
     }
@@ -136,7 +139,7 @@ class Cmdline {
                              bool positional = false,
                              const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
-                        cxxopts::value<T>()->implicit_value(ToString(implicit_value)), "");
+                        cxxopts::value<T>()->implicit_value(detail::ToString(implicit_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
     }
@@ -152,8 +155,8 @@ class Cmdline {
                          const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, "", long_opt, opt_desc,
                         cxxopts::value<T>()
-                            ->default_value(ToString(default_value))
-                            ->implicit_value(ToString(implicit_value)),
+                            ->default_value(detail::ToString(default_value))
+                            ->implicit_value(detail::ToString(implicit_value)),
                         "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
@@ -171,8 +174,8 @@ class Cmdline {
                          const std::string& opt_group = "") -> Cmdline& {
     options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
                         cxxopts::value<T>()
-                            ->default_value(ToString(default_value))
-                            ->implicit_value(ToString(implicit_value)),
+                            ->default_value(detail::ToString(default_value))
+                            ->implicit_value(detail::ToString(implicit_value)),
                         "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
