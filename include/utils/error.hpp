@@ -8,31 +8,34 @@
 #include <type_traits>
 #include <variant>
 
+/**
+ * @brief Provide std::make_error_code(ErrorCategory::Errc) for class ErrorCategory that implement
+ * std::error_category. This macro only work in global namespace.
+ *
+ */
+#define ENABLE_ERROR_CODE(ErrorCategory)                                   \
+  namespace std {                                                          \
+  inline auto make_error_code(ErrorCategory::Errc ec) -> std::error_code { \
+    static auto err_cat = ErrorCategory();                                 \
+    return {ec, err_cat};                                                  \
+  }                                                                        \
+  template <>                                                              \
+  struct is_error_code_enum<ErrorCategory::Errc> : true_type {};           \
+  }  // namespace ascpp
+
 namespace ascpp {
 
 /**
- * @brief Mixin class that provide static method to make std::error_code. You also need to implement
- * name() and message().
+ * @brief Used by Result<void>
  *
- * @tparam T Derived class
  */
-template <typename T>
-class Error : public std::error_category {
- public:
-  static auto make_error_code(int ec) -> std::error_code {
-    static auto err_cat = T{};
-    return {ec, err_cat};
-  }
-
- protected:
-  Error() = default;
-
- public:
-  ~Error() override = default;
-};
-
 struct Void {};
 
+/**
+ * @brief Wrap the result in order to force the user to handle error.
+ *
+ * @tparam T Wrapped result value type.
+ */
 template <typename T>
 class [[nodiscard]] Result {
  public:
@@ -41,8 +44,8 @@ class [[nodiscard]] Result {
   Result() = default;
 
   template <typename U>
-    requires(std::is_convertible_v<std::decay_t<U>, ValueType>)
-  Result(U&& val) : var_{static_cast<ValueType>(std::forward<U>(val))} {}
+    requires(std::is_convertible_v<U, ValueType>)
+  Result(U&& val) : var_(static_cast<ValueType>(std::forward<U>(val))) {}
 
   template <typename U>
     requires(std::is_convertible_v<U, ValueType>)
@@ -58,7 +61,7 @@ class [[nodiscard]] Result {
     requires(std::is_same_v<ValueType, Void>)
   Result(const Result<U>& other_res) {
     if (other_res.IsOk()) {
-      var_ = Void{};
+      var_ = Void();
     } else {
       var_ = other_res.UnwrapErr();
     }
@@ -68,7 +71,7 @@ class [[nodiscard]] Result {
     if (err) {
       var_ = err;
     } else {
-      var_ = ValueType{};
+      var_ = ValueType();
     }
   }
 
@@ -84,7 +87,7 @@ class [[nodiscard]] Result {
 
   template <typename Callable>
   auto Match(Callable&& call) -> decltype(std::visit(std::forward<Callable>(call),
-                                                     std::variant<ValueType, std::error_code>{})) {
+                                                     std::variant<ValueType, std::error_code>())) {
     return std::visit(std::forward<Callable>(call), var_);
   }
 
@@ -100,21 +103,21 @@ class [[nodiscard]] Result {
   }
 
   template <typename U>
-    requires(std::is_convertible_v<std::decay_t<U>, ValueType>)
+    requires(std::is_convertible_v<U, ValueType>)
   auto UnwrapOr(U&& default_value) const& -> ValueType {
     return IsErr() ? static_cast<ValueType>(std::forward<U>(default_value))
                    : std::get<ValueType>(var_);
   }
 
   template <typename U>
-    requires(std::is_convertible_v<std::decay_t<U>, ValueType>)
+    requires(std::is_convertible_v<U, ValueType>)
   auto UnwrapOr(U&& default_value) && -> ValueType {
     return IsErr() ? static_cast<ValueType>(std::forward<U>(default_value))
                    : std::move(std::get<ValueType>(var_));
   }
 
   template <typename U>
-    requires(std::is_convertible_v<std::decay_t<U>, ValueType>)
+    requires(std::is_convertible_v<U, ValueType>)
   auto UnwrapOrAssign(U&& default_value) -> ValueType& {
     if (IsErr()) {
       var_ = static_cast<ValueType>(std::forward<U>(default_value));
@@ -128,6 +131,14 @@ class [[nodiscard]] Result {
   std::variant<ValueType, std::error_code> var_;
 };
 
+#define OK(arg)  if constexpr (!std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
+
+#define ERR(arg) else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
+
+/**
+ * @brief Unwrap a result or return it to upper.
+ *
+ */
 #define TRY_UNWRAP(...)              \
   ({                                 \
     auto _ascpp_res_ = __VA_ARGS__;  \
@@ -136,9 +147,5 @@ class [[nodiscard]] Result {
     }                                \
     std::move(_ascpp_res_.Unwrap()); \
   })
-
-#define OK(arg)  if constexpr (!std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
-
-#define ERR(arg) else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
 
 }  // namespace ascpp

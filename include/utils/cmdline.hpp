@@ -50,7 +50,7 @@ auto ToString(const T& v) -> std::string {
 class Cmdline {
  public:
   explicit Cmdline(const AppInfo* app_info)
-      : app_info_{app_info}, options_{app_info->AppName(), app_info->AppDescription()} {
+      : app_info_(app_info), options_(app_info->AppName(), app_info->AppDescription()) {
     options_.add_options()("h,help", "display usage information");
     options_.add_options()("v,version", "output version number");
   }
@@ -80,8 +80,7 @@ class Cmdline {
                  const std::string& opt_desc,
                  bool positional = false,
                  const std::string& opt_group = "") -> Cmdline& {
-    options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc, cxxopts::value<T>(),
-                        "");
+    options_.add_option(opt_group, {short_opt}, long_opt, opt_desc, cxxopts::value<T>(), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
     }
@@ -109,7 +108,7 @@ class Cmdline {
                             T&& default_value,
                             bool positional = false,
                             const std::string& opt_group = "") -> Cmdline& {
-    options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
+    options_.add_option(opt_group, {short_opt}, long_opt, opt_desc,
                         cxxopts::value<T>()->default_value(detail::ToString(default_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
@@ -138,7 +137,7 @@ class Cmdline {
                              T&& implicit_value,
                              bool positional = false,
                              const std::string& opt_group = "") -> Cmdline& {
-    options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
+    options_.add_option(opt_group, {short_opt}, long_opt, opt_desc,
                         cxxopts::value<T>()->implicit_value(detail::ToString(implicit_value)), "");
     if (positional) {
       positional_options_.emplace_back(long_opt);
@@ -172,7 +171,7 @@ class Cmdline {
                          T&& implicit_value,
                          bool positional = false,
                          const std::string& opt_group = "") -> Cmdline& {
-    options_.add_option(opt_group, std::string{short_opt}, long_opt, opt_desc,
+    options_.add_option(opt_group, {short_opt}, long_opt, opt_desc,
                         cxxopts::value<T>()
                             ->default_value(detail::ToString(default_value))
                             ->implicit_value(detail::ToString(implicit_value)),

@@ -10,10 +10,10 @@
 #include "app.hpp"
 
 TEST(TestCmdline, BasicUsage) {
-  auto cmdline = ascpp::Cmdline{&app_info};
+  auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<std::string>('s', "str", "");
-  std::vector<const char*> argv{};
-  std::vector<std::string> unmatched{};
+  auto argv = std::vector<const char*>();
+  auto unmatched = std::vector<std::string>();
 
   argv = {"ascpp", "-shello"};
   cmdline.ParseArgs(argv.size(), argv.data());
@@ -57,7 +57,7 @@ TEST(TestCmdline, AddBoolOption) {
   auto cmdline_both = ascpp::Cmdline{&app_info};
   cmdline_both.AddOptionWithBoth<bool>('b', "short_b", "", true, false);
   cmdline_both.AddOptionWithBoth<bool>("bool", "", true, false);
-  std::vector<const char*> argv{};
+  auto argv = std::vector<const char*>();
 
   // bool has default default_value: false
   argv = {"ascpp"};
@@ -126,19 +126,19 @@ TEST(TestCmdline, AddBoolOption) {
 }
 
 TEST(TestCmdline, AddIntOption) {
-  auto cmdline = ascpp::Cmdline{&app_info};
+  auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<int>('i', "short_i", "");
   cmdline.AddOption<int>("int", "");
-  auto cmdline_default = ascpp::Cmdline{&app_info};
+  auto cmdline_default = ascpp::Cmdline(&app_info);
   cmdline_default.AddOptionWithDefault<int>('i', "short_i", "", 11);
   cmdline_default.AddOptionWithDefault<int>("int", "", 11);
-  auto cmdline_implicit = ascpp::Cmdline{&app_info};
+  auto cmdline_implicit = ascpp::Cmdline(&app_info);
   cmdline_implicit.AddOptionWithImplicit<int>('i', "short_i", "", 11);
   cmdline_implicit.AddOptionWithImplicit<int>("int", "", 11);
-  auto cmdline_both = ascpp::Cmdline{&app_info};
+  auto cmdline_both = ascpp::Cmdline(&app_info);
   cmdline_both.AddOptionWithBoth<int>('i', "short_i", "", 11, 11);
   cmdline_both.AddOptionWithBoth<int>("int", "", 11, 11);
-  std::vector<const char*> argv{};
+  auto argv = std::vector<const char*>();
 
   // without default_value
   argv = {"ascpp"};
@@ -206,19 +206,19 @@ TEST(TestCmdline, AddIntOption) {
 }
 
 TEST(TestCmdline, AddFloatOption) {
-  auto cmdline = ascpp::Cmdline{&app_info};
+  auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<float>('f', "short_f", "");
   cmdline.AddOption<float>("float", "");
-  auto cmdline_default = ascpp::Cmdline{&app_info};
+  auto cmdline_default = ascpp::Cmdline(&app_info);
   cmdline_default.AddOptionWithDefault<float>('f', "short_f", "", 1.1);
   cmdline_default.AddOptionWithDefault<float>("float", "", 1.1);
-  auto cmdline_implicit = ascpp::Cmdline{&app_info};
+  auto cmdline_implicit = ascpp::Cmdline(&app_info);
   cmdline_implicit.AddOptionWithImplicit<float>('f', "short_f", "", 1.1);
   cmdline_implicit.AddOptionWithImplicit<float>("float", "", 1.1);
-  auto cmdline_both = ascpp::Cmdline{&app_info};
+  auto cmdline_both = ascpp::Cmdline(&app_info);
   cmdline_both.AddOptionWithBoth<float>('f', "short_f", "", 1.1, 1.1);
   cmdline_both.AddOptionWithBoth<float>("float", "", 1.1, 1.1);
-  std::vector<const char*> argv{};
+  auto argv = std::vector<const char*>();
 
   // without default_value
   argv = {"ascpp"};
@@ -283,19 +283,19 @@ TEST(TestCmdline, AddFloatOption) {
 }
 
 TEST(TestCmdline, AddStringOption) {
-  auto cmdline = ascpp::Cmdline{&app_info};
+  auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<std::string>('s', "short_s", "");
   cmdline.AddOption<std::string>("string", "");
-  auto cmdline_default = ascpp::Cmdline{&app_info};
+  auto cmdline_default = ascpp::Cmdline(&app_info);
   cmdline_default.AddOptionWithDefault<std::string>('s', "short_s", "", "hello");
   cmdline_default.AddOptionWithDefault<std::string>("string", "", "hello");
-  auto cmdline_implicit = ascpp::Cmdline{&app_info};
+  auto cmdline_implicit = ascpp::Cmdline(&app_info);
   cmdline_implicit.AddOptionWithImplicit<std::string>('s', "short_s", "", "hello");
   cmdline_implicit.AddOptionWithImplicit<std::string>("string", "", "hello");
-  auto cmdline_both = ascpp::Cmdline{&app_info};
+  auto cmdline_both = ascpp::Cmdline(&app_info);
   cmdline_both.AddOptionWithBoth<std::string>('s', "short_s", "", "hello", "hello");
   cmdline_both.AddOptionWithBoth<std::string>("string", "", "hello", "hello");
-  std::vector<const char*> argv{};
+  auto argv = std::vector<const char*>();
 
   // without default_value
   argv = {"ascpp"};
@@ -360,24 +360,24 @@ TEST(TestCmdline, AddStringOption) {
 }
 
 TEST(TestCmdline, AddVectorOption) {
-  auto cmdline = ascpp::Cmdline{&app_info};
+  auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<std::vector<std::string>>('V', "short_v", "");
   cmdline.AddOption<std::vector<std::string>>("vector", "");
-  auto cmdline_default = ascpp::Cmdline{&app_info};
+  auto cmdline_default = ascpp::Cmdline(&app_info);
   cmdline_default.AddOptionWithDefault<std::vector<std::string>>('V', "short_v", "",
                                                                  {"a", "b", "c"});
   cmdline_default.AddOptionWithDefault<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  auto cmdline_implicit = ascpp::Cmdline{&app_info};
+  auto cmdline_implicit = ascpp::Cmdline(&app_info);
   cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>('V', "short_v", "",
                                                                    {"a", "b", "c"});
   cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  auto cmdline_both = ascpp::Cmdline{&app_info};
+  auto cmdline_both = ascpp::Cmdline(&app_info);
   cmdline_both.AddOptionWithBoth<std::vector<std::string>>('V', "short_v", "", {"a", "b", "c"},
                                                            {"a", "b", "c"});
   cmdline_both.AddOptionWithBoth<std::vector<std::string>>("vector", "", {"a", "b", "c"},
                                                            {"a", "b", "c"});
-  std::vector<const char*> argv{};
-  std::vector<std::string> values{"a", "b", "c"};
+  auto argv = std::vector<const char*>();
+  auto values = std::vector<std::string>{"a", "b", "c"};
 
   // without default_value
   argv = {"ascpp"};
@@ -449,9 +449,9 @@ TEST(TestCmdline, AddVectorOption) {
 }
 
 TEST(TestCmdline, AddPositionalOption) {
-  auto option = ascpp::Cmdline{&app_info};
-  std::vector<const char*> argv{};
-  std::vector<std::string> value{};
+  auto option = ascpp::Cmdline(&app_info);
+  auto argv = std::vector<const char*>();
+  auto value = std::vector<std::string>();
   option.AddOption<bool>('o', "opt", "");
   option.AddOption<std::string>("a", "", true);
   option.AddOption<std::string>("b", "", true);
@@ -482,8 +482,8 @@ TEST(TestCmdline, AddPositionalOption) {
 }
 
 TEST(TestCmdline, HelpAndVersionOption) {
-  auto option = ascpp::Cmdline{&app_info};
-  std::vector<const char*> argv{};
+  auto option = ascpp::Cmdline(&app_info);
+  auto argv = std::vector<const char*>();
 
   // argv = {"ascpp", "--help"};
   // option.Parse(argv.size(), argv.data());

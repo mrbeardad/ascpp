@@ -1,7 +1,10 @@
 #include "utils/error.hpp"
 
+#include <ios>
 #include <iostream>
 #include <ostream>
+#include <random>
+#include <string>
 #include <system_error>
 #include <type_traits>
 #include <utility>
@@ -9,207 +12,190 @@
 
 #include "gtest/gtest.h"
 
-class Debug {
- public:
-  Debug() { std::cout << "default construct" << std::endl; }
+struct Debug {
+  Debug() { std::clog << "default construct" << std::endl; }
 
-  Debug(int i) : id{i} { std::cout << "construct: " << id << std::endl; }
+  Debug(int i) : value{i} { std::clog << "construct: " << value << std::endl; }
 
   Debug(Debug&& other) noexcept {
-    id = other.id;
-    std::cout << "move construct: " << id << std::endl;
+    value = other.value;
+    ++move_construct_times;
+    std::clog << "move construct: " << value << std::endl;
   }
 
   Debug(const Debug& other) {
-    id = other.id;
-    std::cout << "copy construct: " << id << std::endl;
+    value = other.value;
+    ++copy_construct_times;
+    std::clog << "copy construct: " << value << std::endl;
   }
 
   auto operator=(Debug&& other) noexcept -> Debug& {
-    id = other.id;
-    std::cout << "move assingment: " << id << std::endl;
+    value = other.value;
+    ++move_assign_times;
+    std::clog << "move assingment: " << value << std::endl;
     return *this;
   }
 
   auto operator=(const Debug& other) -> Debug& {
-    id = other.id;
-    std::cout << "copy assingment: " << id << std::endl;
+    value = other.value;
+    ++copy_assign_times;
+    std::clog << "copy assingment: " << value << std::endl;
     return *this;
   }
 
-  ~Debug() { std::cout << "destroy: " << id << std::endl; }
+  ~Debug() { std::clog << "destroy: " << value << std::endl; }
 
-  int id;
+  auto Reset() -> void {
+    value = 0;
+    move_construct_times = 0;
+    move_assign_times = 0;
+    copy_construct_times = 0;
+    copy_assign_times = 0;
+  }
+
+  int value;
+  int move_construct_times;
+  int move_assign_times;
+  int copy_construct_times;
+  int copy_assign_times;
 };
 
+class MyError : public std::error_category {
+ public:
+  enum Errc { NO_ERR, ERR_1, ERR_2 };
+
+  auto name() const noexcept -> const char* override { return "MyError"; }
+
+  auto message(int ec) const -> std::string override {
+    switch (static_cast<Errc>(ec)) {
+      case NO_ERR:
+        return "no error";
+      case ERR_1:
+        return "error 1";
+      case ERR_2:
+        return "error 2";
+    }
+    return "unkown error";
+  }
+};
+
+ENABLE_ERROR_CODE(MyError);
+
+TEST(TestError, BasicUsage) {
+  auto err = std::make_error_code(MyError::ERR_1);
+  EXPECT_ANY_THROW(throw std::system_error(err));
+}
+
+TEST(TestResult, Constructor) {
+  auto res = ascpp::Result<Debug>();
+  EXPECT_EQ(res.Unwrap().value, 0);
+
+  res.Unwrap().Reset();
+  res = Debug(1);
+  EXPECT_EQ(res.Unwrap().value, 1);
+
+  res.Unwrap().Reset();
+  res = 1;
+  EXPECT_EQ(res.Unwrap().value, 1);
+
+  res.Unwrap().Reset();
+  res = 1.5;
+  EXPECT_EQ(res.Unwrap().value, 1);
+
+  res.Unwrap().Reset();
+  res = ascpp::Result<int>(1);
+  EXPECT_EQ(res.Unwrap().value, 1);
+
+  res.Unwrap().Reset();
+  res = ascpp::Result<double>(1.5);
+  EXPECT_EQ(res.Unwrap().value, 1);
+
+  res.Unwrap().Reset();
+  res = ascpp::Result<Debug>(std::make_error_code(MyError::ERR_1));
+  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
+
+  // could not conversion from Result<void> to Result<NonVoid>
+  // res.Unwrap().Reset();
+  // res = ascpp::Result<void>();
+  // EXPECT_EQ(res.Unwrap().value, 0);
+
+  auto void_res = ascpp::Result<void>(std::make_error_code(MyError::ERR_1));
+  EXPECT_EQ(void_res.UnwrapErr(), MyError::ERR_1);
+
+  void_res = ascpp::Result<int>();
+  EXPECT_EQ(void_res.IsOk(), true);
+
+  res = std::make_error_code(MyError::ERR_1);
+  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
+  res = std::make_error_code(MyError::NO_ERR);
+  EXPECT_EQ(res.IsOk(), true);
+}
+
+TEST(TestResult, BasicUsage) {
+  auto res = ascpp::Result<Debug>();
+  EXPECT_EQ(res.IsOk(), true);
+  EXPECT_EQ(res.IsErr(), false);
+  EXPECT_EQ(res.Unwrap().value, 0);
+  EXPECT_ANY_THROW(res.UnwrapErr());
+  EXPECT_EQ(res.UnwrapOr(Debug(1)).value, 0);
+  EXPECT_EQ(res.UnwrapOr(1).value, 0);
+  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)).value, 0);
+  EXPECT_EQ(res.UnwrapOrAssign(1).value, 0);
+  EXPECT_EQ(res.Match([](auto&& arg) {
+    OK(arg) {
+      return arg.value;
+    }
+    ERR(arg) {
+      return arg.value();
+    }
+  }),
+            0);
+
+  res = std::make_error_code(MyError::ERR_1);
+  EXPECT_EQ(res.IsErr(), true);
+  EXPECT_EQ(res.IsOk(), false);
+  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
+  EXPECT_ANY_THROW(res.Unwrap());
+  EXPECT_EQ(res.UnwrapOr(Debug(1)).value, 1);
+  EXPECT_EQ(res.UnwrapOr(1).value, 1);
+  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)).value, 1);
+  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.UnwrapOrAssign(2).value, 1);
+
+  res = std::make_error_code(MyError::ERR_1);
+  EXPECT_EQ(res.Match([](auto&& arg) {
+    OK(arg) {
+      return arg.value;
+    }
+    ERR(arg) {
+      return arg.value();
+    }
+  }),
+            1);
+}
+
 auto GetResult() -> ascpp::Result<Debug> {
-  return 1;
+  auto re = std::default_random_engine(std::random_device()());
+  auto rd = std::bernoulli_distribution();
+  if (rd(re)) {
+    return -1;
+  }
+  return std::make_error_code(MyError::ERR_1);
 }
 
-auto GetVoidResult() -> ascpp::Result<void> {
+auto UseTryUnwrap() -> ascpp::Result<void> {
+  auto res = TRY_UNWRAP(GetResult());
+  // do something ...
   return {};
 }
 
-auto UseMatch() -> ascpp::Result<Debug> {
-  auto d = GetResult();
-  std::cout << d.Match([](auto&& arg) {
+TEST(TestResult, TryUnwrap) {
+  UseTryUnwrap().Match([](auto&& arg) {
     OK(arg) {
-      return 1;
+      std::clog << "OK" << std::endl;
     }
     ERR(arg) {
-      return 2;
+      std::clog << "ERR" << std::endl;
     }
-    return 0;
   });
-
-  auto v = GetVoidResult();
-  std::cout << v.Match([](auto&& arg) {
-    OK(arg) {
-      return "a";
-    }
-    ERR(arg) {
-      return "b";
-    }
-    return "c";
-  });
-  return {};
-}
-
-auto UseUnwrapOr() -> ascpp::Result<Debug> {
-  auto d = GetResult().UnwrapOr(2);
-  std::cout << "return" << std::endl;
-  return d;
-}
-
-auto UseUnwrapAssign() -> ascpp::Result<Debug> {
-  auto res = GetResult();
-  auto& d = res.UnwrapOrAssign(2);
-  std::cout << "return" << std::endl;
-  return d;
-}
-
-auto UseTryUnwrap() -> ascpp::Result<Debug> {
-  auto d = TRY_UNWRAP(GetResult());
-  // TRY_UNWRAP(GetVoidResult());
-  std::cout << "return" << std::endl;
-}
-
-TEST(TestResult, Unwrap) {
-  ascpp::Result<int> lr{1};
-  EXPECT_EQ(lr.Unwrap(), 1);
-  EXPECT_EQ(lr.UnwrapOr(2), 1);
-  EXPECT_EQ(lr.UnwrapOrAssign(2), 1);
-  const auto& clr = lr;
-  EXPECT_EQ(clr.Unwrap(), 1);
-  EXPECT_EQ(clr.UnwrapOr(2), 1);
-  EXPECT_EQ(ascpp::Result<int>{1}.Unwrap(), 1);
-  EXPECT_EQ(ascpp::Result<int>{1}.UnwrapOr(2), 1);
-  EXPECT_EQ(ascpp::Result<int>{1}.UnwrapOrAssign(2), 1);
-
-  auto ec = std::make_error_code(std::errc::io_error);
-  lr = ec;
-  EXPECT_EQ(lr.UnwrapErr(), ec);
-  EXPECT_EQ(lr.UnwrapOr(2), 2);
-  EXPECT_EQ(lr.UnwrapOrAssign(2), 2);
-  EXPECT_EQ(lr.Unwrap(), 2);
-  lr = ec;
-  EXPECT_ANY_THROW(lr.Unwrap());
-  const ascpp::Result<int> cl{ec};
-  EXPECT_ANY_THROW(cl.Unwrap());
-  EXPECT_ANY_THROW(ascpp::Result<int>{ec}.Unwrap());
-
-  ec = std::error_code{};
-  lr = 1;
-  lr = ec;
-  EXPECT_EQ(lr.Unwrap(), 0);
-}
-
-TEST(TestResult, VoidUnwrap) {
-  ascpp::Result<void> lr{};
-  EXPECT_TRUE(lr.IsOk());
-  const auto& clr = lr;
-  EXPECT_TRUE(clr.IsOk());
-  EXPECT_TRUE(ascpp::Result<void>{}.IsOk());
-
-  auto ec = std::make_error_code(std::errc::io_error);
-  lr = ec;
-  EXPECT_EQ(lr.UnwrapErr(), ec);
-  EXPECT_ANY_THROW(lr.Unwrap());
-  const ascpp::Result<void> cl{ec};
-  EXPECT_ANY_THROW(cl.Unwrap());
-  EXPECT_ANY_THROW(ascpp::Result<void>{ec}.Unwrap());
-
-  ascpp::Result<int> int_res{1};
-  ascpp::Result<void> void_res{};
-
-  // ok int <- ok void
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.IsOk(), true);
-  // int_res = void_res;
-  EXPECT_EQ(int_res.Unwrap(), 0);
-  EXPECT_EQ(void_res.IsOk(), true);
-
-  int_res = 1;
-
-  // ok int -> ok void
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.IsOk(), true);
-  void_res = int_res;
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.IsOk(), true);
-
-  void_res = ec;
-
-  // ok int <- err void
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.UnwrapErr(), ec);
-  // int_res = void_res;
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.UnwrapErr(), ec);
-
-  int_res = 1;
-
-  // ok int -> err void
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.UnwrapErr(), ec);
-  void_res = int_res;
-  EXPECT_EQ(int_res.Unwrap(), 1);
-  EXPECT_EQ(void_res.IsOk(), true);
-
-  int_res = ec;
-
-  // err int <- ok void
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.IsOk(), true);
-  // int_res = void_res;
-  EXPECT_EQ(int_res.Unwrap(), 0);
-  EXPECT_EQ(void_res.IsOk(), true);
-
-  int_res = ec;
-
-  // err int -> ok void
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.IsOk(), true);
-  void_res = int_res;
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.UnwrapErr(), ec);
-
-  auto ec2 = std::make_error_code(std::errc::executable_format_error);
-  void_res = ec2;
-
-  // err int <- err void
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.UnwrapErr(), ec2);
-  // int_res = void_res;
-  EXPECT_EQ(int_res.UnwrapErr(), ec2);
-  EXPECT_EQ(void_res.UnwrapErr(), ec2);
-
-  int_res = ec;
-
-  // err int -> err void
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.UnwrapErr(), ec2);
-  void_res = int_res;
-  EXPECT_EQ(int_res.UnwrapErr(), ec);
-  EXPECT_EQ(void_res.UnwrapErr(), ec);
 }

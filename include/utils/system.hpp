@@ -10,26 +10,22 @@
 #include <system_error>
 
 #include "utils/error.hpp"
-#include "utils/misc.hpp"
 
 namespace ascpp {
 
-class SysErr : public Error<SysErr> {
+class SysErr : public std::error_category {
  public:
-  enum Errc { kNoError, kGetEnvError, kGetEnvWithEmptyVale, kSetEnvError };
-
-  SysErr() = default;
-  ~SysErr() override = default;
+  enum Errc { NO_ERROR, GET_ENV_ERROR, GET_EMPTY_ENV, SET_ENV_ERROR };
 
   auto name() const noexcept -> const char* override { return "ascpp:system"; }
 
   auto message(int ec) const -> std::string override {
     switch (ec) {
-      case kGetEnvError:
+      case GET_ENV_ERROR:
         return "get env error";
-      case kGetEnvWithEmptyVale:
+      case GET_EMPTY_ENV:
         return "env value is empty";
-      case kSetEnvError:
+      case SET_ENV_ERROR:
         return "set env error";
       default:
         return "unkown error";
@@ -37,31 +33,37 @@ class SysErr : public Error<SysErr> {
   }
 };
 
+}  // namespace ascpp
+
+ENABLE_ERROR_CODE(ascpp::SysErr);
+
+namespace ascpp {
+
 inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
-  auto size = size_t{};
+  auto size = size_t();
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
-    return SysErr::make_error_code(SysErr::kGetEnvError);
+    return std::make_error_code(SysErr::GET_ENV_ERROR);
   }
   if (size == 0) {
-    return SysErr::make_error_code(SysErr::kGetEnvWithEmptyVale);
+    return std::make_error_code(SysErr::GET_EMPTY_ENV);
   }
 
   auto value = std::string(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return SysErr::make_error_code(SysErr::kGetEnvError);
+    return std::make_error_code(SysErr::GET_ENV_ERROR);
   }
   value.resize(size - 1);
   return value;
 #else
   auto* value = std::getenv(name.c_str());
   if (value == nullptr) {
-    return SysErr::make_error_code(SysErr::kGetEnvError);
+    return std::make_error_code(SysErr::GET_ENV_ERROR);
   }
   if (std::strlen(value) == 0) {
-    return SysErr::make_error_code(SysErr::kGetEnvWithEmptyVale);
+    return std::make_error_code(SysErr::GET_EMPTY_ENV);
   }
   return value;
 #endif
@@ -70,12 +72,12 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
 inline auto SetEnv(const std::string& name, const std::string& value) -> Result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
-    return SysErr::make_error_code(SysErr::kSetEnvError);
+    return std::make_error_code(SysErr::SET_ENV_ERROR);
   }
   return {};
 #else
   if (::setenv(name.c_str(), value.c_str(), 1)) {
-    return SysErr::make_error_code(SysErr::kSetEnvError);
+    return std::make_error_code(SysErr::SET_ENV_ERROR);
   }
   return {};
 #endif
@@ -99,13 +101,13 @@ inline auto GetConfigDir() -> Result<std::filesystem::path> {
   }
   dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path{dir.Unwrap()} / ".config";
+    return fs::path(dir.Unwrap()) / ".config";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
   auto dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path{dir.Unwrap()} / "Library/Application Support";
+    return fs::path(dir.Unwrap()) / "Library/Application Support";
   }
   return dir;
 #endif
@@ -121,20 +123,20 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
   }
   dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path{dir.Unwrap()} / ".cache";
+    return fs::path(dir.Unwrap()) / ".cache";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
   auto dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path{dir.Unwrap()} / "Library/Caches";
+    return fs::path(dir.Unwrap()) / "Library/Caches";
   }
   return dir;
 #endif
 }
 
 inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void> {
-  auto err = std::error_code{};
+  auto err = std::error_code();
   auto result = std::filesystem::exists(filepath, err);
   if (err) {
     return err;
@@ -153,7 +155,7 @@ inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void
     }
   }
   if (filepath.has_filename()) {
-    const std::ofstream out{filepath};
+    const std::ofstream out(filepath);
     if (!out) {
       return std::make_error_code(static_cast<std::errc>(errno));
     }
