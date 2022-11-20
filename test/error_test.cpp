@@ -12,53 +12,55 @@
 
 #include "gtest/gtest.h"
 
-struct Debug {
-  Debug() { std::clog << "default construct" << std::endl; }
+auto move_construct_times = 0;
+auto move_assign_times = 0;
+auto copy_construct_times = 0;
+auto copy_assign_times = 0;
 
-  Debug(int i) : value{i} { std::clog << "construct: " << value << std::endl; }
+auto ResetTimes() -> void {
+  move_construct_times = 0;
+  move_assign_times = 0;
+  copy_construct_times = 0;
+  copy_assign_times = 0;
+}
+
+struct Debug {
+  Debug() {}
+
+  Debug(int i) : value(i) {}
 
   Debug(Debug&& other) noexcept {
     value = other.value;
     ++move_construct_times;
-    std::clog << "move construct: " << value << std::endl;
   }
 
   Debug(const Debug& other) {
     value = other.value;
     ++copy_construct_times;
-    std::clog << "copy construct: " << value << std::endl;
   }
 
   auto operator=(Debug&& other) noexcept -> Debug& {
     value = other.value;
     ++move_assign_times;
-    std::clog << "move assingment: " << value << std::endl;
     return *this;
   }
 
   auto operator=(const Debug& other) -> Debug& {
     value = other.value;
     ++copy_assign_times;
-    std::clog << "copy assingment: " << value << std::endl;
     return *this;
   }
 
-  ~Debug() { std::clog << "destroy: " << value << std::endl; }
+  ~Debug() {}
 
-  auto Reset() -> void {
-    value = 0;
-    move_construct_times = 0;
-    move_assign_times = 0;
-    copy_construct_times = 0;
-    copy_assign_times = 0;
-  }
+  auto Reset() -> void { value = 0; }
 
   int value;
-  int move_construct_times;
-  int move_assign_times;
-  int copy_construct_times;
-  int copy_assign_times;
 };
+
+auto operator==(const Debug& lhs, const Debug& rhs) -> bool {
+  return lhs.value == rhs.value;
+}
 
 class MyError : public std::error_category {
  public:
@@ -83,32 +85,34 @@ ENABLE_ERROR_CODE(MyError);
 
 TEST(TestError, BasicUsage) {
   auto err = std::make_error_code(MyError::ERR_1);
+  auto res = ascpp::Result<void>(err);
+  EXPECT_ANY_THROW(res.Unwrap());
   EXPECT_ANY_THROW(throw std::system_error(err));
 }
 
 TEST(TestResult, Constructor) {
   auto res = ascpp::Result<Debug>();
-  EXPECT_EQ(res.Unwrap().value, 0);
+  EXPECT_EQ(res.Unwrap(), 0);
 
   res.Unwrap().Reset();
   res = Debug(1);
-  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
   res = 1;
-  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
   res = 1.5;
-  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
   res = ascpp::Result<int>(1);
-  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
   res = ascpp::Result<double>(1.5);
-  EXPECT_EQ(res.Unwrap().value, 1);
+  EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
   res = ascpp::Result<Debug>(std::make_error_code(MyError::ERR_1));
@@ -117,7 +121,7 @@ TEST(TestResult, Constructor) {
   // could not conversion from Result<void> to Result<NonVoid>
   // res.Unwrap().Reset();
   // res = ascpp::Result<void>();
-  // EXPECT_EQ(res.Unwrap().value, 0);
+  // EXPECT_EQ(res.Unwrap(), 0);
 
   auto void_res = ascpp::Result<void>(std::make_error_code(MyError::ERR_1));
   EXPECT_EQ(void_res.UnwrapErr(), MyError::ERR_1);
@@ -135,12 +139,12 @@ TEST(TestResult, BasicUsage) {
   auto res = ascpp::Result<Debug>();
   EXPECT_EQ(res.IsOk(), true);
   EXPECT_EQ(res.IsErr(), false);
-  EXPECT_EQ(res.Unwrap().value, 0);
+  EXPECT_EQ(res.Unwrap(), 0);
   EXPECT_ANY_THROW(res.UnwrapErr());
-  EXPECT_EQ(res.UnwrapOr(Debug(1)).value, 0);
-  EXPECT_EQ(res.UnwrapOr(1).value, 0);
-  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)).value, 0);
-  EXPECT_EQ(res.UnwrapOrAssign(1).value, 0);
+  EXPECT_EQ(res.UnwrapOr(Debug(1)), 0);
+  EXPECT_EQ(res.UnwrapOr(1), 0);
+  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)), 0);
+  EXPECT_EQ(res.UnwrapOrAssign(1), 0);
   EXPECT_EQ(res.Match([](auto&& arg) {
     OK(arg) {
       return arg.value;
@@ -156,11 +160,11 @@ TEST(TestResult, BasicUsage) {
   EXPECT_EQ(res.IsOk(), false);
   EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
   EXPECT_ANY_THROW(res.Unwrap());
-  EXPECT_EQ(res.UnwrapOr(Debug(1)).value, 1);
-  EXPECT_EQ(res.UnwrapOr(1).value, 1);
-  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)).value, 1);
-  EXPECT_EQ(res.Unwrap().value, 1);
-  EXPECT_EQ(res.UnwrapOrAssign(2).value, 1);
+  EXPECT_EQ(res.UnwrapOr(Debug(1)), 1);
+  EXPECT_EQ(res.UnwrapOr(1), 1);
+  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)), 1);
+  EXPECT_EQ(res.Unwrap(), 1);
+  EXPECT_EQ(res.UnwrapOrAssign(2), 1);
 
   res = std::make_error_code(MyError::ERR_1);
   EXPECT_EQ(res.Match([](auto&& arg) {

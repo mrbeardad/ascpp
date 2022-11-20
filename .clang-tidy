@@ -2,6 +2,7 @@
 Checks: >
   -*,
   bugprone-*,
+  -bugprone-easily-swappable-parameters,
   google-*,
   -google-runtime-references,
   -google-readability-todo,

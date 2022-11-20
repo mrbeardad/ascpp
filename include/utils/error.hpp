@@ -99,7 +99,7 @@ class [[nodiscard]] Result {
   }
 
   auto Unwrap() -> ValueType& {
-    return const_cast<ValueType&>(static_cast<const Result<T>&>(*this).Unwrap());
+    return const_cast<ValueType&>(static_cast<const Result&>(*this).Unwrap());
   }
 
   template <typename U>

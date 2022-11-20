@@ -33,9 +33,11 @@ TEST(TestCmdline, BasicUsage) {
   EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
   EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
 
-  argv = {"ascpp", "--str=hello", "--str=world"};
+  argv = {"ascpp", "--str=hello", "my", "--str=world"};
+  unmatched = {"my"};
   cmdline.ParseArgs(argv.size(), argv.data());
   EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
+  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
 
   argv = {"ascpp", "--str=hello", "--", "--str=world"};
   unmatched = {"--str=world"};
