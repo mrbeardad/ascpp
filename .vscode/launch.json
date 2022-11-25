@@ -6,18 +6,8 @@
       "type": "lldb",
       "request": "launch",
       "expressions": "native",
-      "initCommands": ["set set target.max-string-summary-length 10000"],
+      // "initCommands": ["set set target.max-string-summary-length 10000"],
       "program": "${workspaceFolder}/build/test/test",
-      "args": [],
-      "env": {}
-    },
-    {
-      "name": "debug 3rd",
-      "type": "lldb",
-      "request": "launch",
-      "expressions": "native",
-      "initCommands": ["set set target.max-string-summary-length 10000"],
-      "program": "${workspaceFolder}/build/test/3rd_test",
       "args": [],
       "env": {}
     }

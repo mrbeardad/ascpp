@@ -4,11 +4,20 @@
 #include <string>
 #include <vector>
 
-#include "cxxopts.hpp"
 #include "gtest/gtest.h"
 
 #include "app.hpp"
 
+TEST(TestCmdline, BasicUsage) {
+  auto cmd = ascpp::Cmdline{&app_info};
+  cmd.AddOption<bool>('b', "bool", "");
+  auto args = std::vector<const char*>{"ascpp", "-b", "--bool"};
+  cmd.ParseArgs(args.size(), args.data());
+  auto b = cmd.GetValue<bool>("b");
+  std::cout << b << std::endl;
+}
+
+/*
 TEST(TestCmdline, BasicUsage) {
   auto cmdline = ascpp::Cmdline(&app_info);
   cmdline.AddOption<std::string>('s', "str", "");
@@ -493,3 +502,5 @@ TEST(TestCmdline, HelpAndVersionOption) {
   // argv = {"ascpp", "--version"};
   // option.Parse(argv.size(), argv.data());
 }
+*/
+

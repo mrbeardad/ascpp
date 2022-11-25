@@ -41,12 +41,22 @@ class [[nodiscard]] Result {
  public:
   using ValueType = std::conditional_t<std::is_same_v<T, void>, Void, T>;
 
+  /**
+   * @brief Default construct as default value of type T
+   *
+   */
   Result() = default;
 
+  /**
+   * @brief Allow conversion from U that is convertible for T to Result<T>
+   */
   template <typename U>
     requires(std::is_convertible_v<U, ValueType>)
   Result(U&& val) : var_(static_cast<ValueType>(std::forward<U>(val))) {}
 
+  /**
+   * @brief Allow conversion from Result<U> that U is convertible for T to Result<T>
+   */
   template <typename U>
     requires(std::is_convertible_v<U, ValueType>)
   Result(Result<U> other_res) {
@@ -57,6 +67,12 @@ class [[nodiscard]] Result {
     }
   }
 
+  /**
+   * @brief Allow conversion from Result<void> to Result<T>, but not the other way around.
+   *
+   * If Result<void> is ERR, the constructed Result<T> will be the same ERR. If Result<void> is OK,
+   * the constructed Result<T> will be the default value of type T.
+   */
   template <typename U>
     requires(std::is_same_v<ValueType, Void>)
   Result(const Result<U>& other_res) {
@@ -67,7 +83,13 @@ class [[nodiscard]] Result {
     }
   }
 
-  Result(std::error_code err) {
+  /**
+   * @brief Allow conversion from std::error_code to Result<T>, then UnwrapErr will return the same
+   * err. If err is false, construct as the default value of type T
+   *
+   * @param err
+   */
+  Result(const std::error_code& err) {
     if (err) {
       var_ = err;
     } else {

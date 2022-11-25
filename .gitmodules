@@ -7,9 +7,6 @@
 [submodule "3rd_party/nlohmannjson"]
 	path = 3rd_party/nlohmannjson
 	url = https://github.com/nlohmann/json
-[submodule "3rd_party/cxxopts"]
-	path = 3rd_party/cxxopts
-	url = https://github.com/jarro2783/cxxopts
 [submodule "3rd_party/fmt"]
 	path = 3rd_party/fmt
 	url = https://github.com/fmtlib/fmt

@@ -39,6 +39,9 @@ ENABLE_ERROR_CODE(ascpp::SysErr);
 
 namespace ascpp {
 
+/**
+ * @brief Get the system environment variable by it's name.
+ */
 inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
   auto size = size_t();
@@ -69,6 +72,9 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
 #endif
 }
 
+/**
+ * @brief Set the system environment variable.
+ */
 inline auto SetEnv(const std::string& name, const std::string& value) -> Result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
@@ -83,6 +89,9 @@ inline auto SetEnv(const std::string& name, const std::string& value) -> Result<
 #endif
 }
 
+/**
+ * @brief Get the home directory of current user.
+ */
 inline auto GetHomeDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("USERPROFILE");
@@ -91,6 +100,9 @@ inline auto GetHomeDir() -> Result<std::filesystem::path> {
 #endif
 }
 
+/**
+ * @brief Get the configuration directory of current user.
+ */
 inline auto GetConfigDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("APPDATA");
@@ -113,6 +125,9 @@ inline auto GetConfigDir() -> Result<std::filesystem::path> {
 #endif
 }
 
+/**
+ * @brief Get the cache directory of current user.
+ */
 inline auto GetCacheDir() -> Result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
   return GetEnv("LOCALAPPDATA");
@@ -135,6 +150,12 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
 #endif
 }
 
+/**
+ * @brief Create the directories and ordinary file in given path.
+ *
+ * If it is a ordinary file, create the all directories in it's parent path and then create the
+ * empty file. You can create std::path that store the directory path by `path /= ""`.
+ */
 inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void> {
   auto err = std::error_code();
   auto result = std::filesystem::exists(filepath, err);
