@@ -9,12 +9,50 @@
 #include "app.hpp"
 
 TEST(TestCmdline, BasicUsage) {
+  // bool option
   auto cmd = ascpp::Cmdline{&app_info};
-  cmd.AddOption<bool>('b', "bool", "");
-  auto args = std::vector<const char*>{"ascpp", "-b", "--bool"};
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<bool>('b', "bool", "boolean option");
+  args = {"ascpp"};
   cmd.ParseArgs(args.size(), args.data());
-  auto b = cmd.GetValue<bool>("b");
-  std::cout << b << std::endl;
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  args = {"ascpp", "-b"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "--bool"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "-btrue"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--bool=true"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "--bool=yes"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "--bool=on"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "--bool=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  args = {"ascpp", "--bool=false"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  args = {"ascpp", "--bool=no"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  args = {"ascpp", "--bool=off"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  args = {"ascpp", "--bool=0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+
+  // cmd.AddOption<int>('i', "int", "integral option");
+  // cmd.AddOption<double>('d', "double", "double float point option");
+  // cmd.AddOption<std::string>('s', "string", "string option");
 }
 
 /*
@@ -503,4 +541,3 @@ TEST(TestCmdline, HelpAndVersionOption) {
   // option.Parse(argv.size(), argv.data());
 }
 */
-

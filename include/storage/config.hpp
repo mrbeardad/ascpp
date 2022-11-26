@@ -21,7 +21,6 @@
 #include "utils/misc.hpp"
 #include "utils/system.hpp"
 
-
 namespace ascpp {
 
 class Config {
@@ -50,7 +49,7 @@ class Config {
     std::unique_lock lock{mutex_};
     std::error_code errc{};
 
-    auto last_write_timestamp = fs::last_write_time(config_path_, errc);
+    auto last_write_timestamp = std::filesystem::last_write_time(config_path_, errc);
     if (errc) {
       return errc;
     }
