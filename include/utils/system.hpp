@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vcruntime.h>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -113,13 +112,13 @@ inline auto GetConfigDir() -> Result<std::filesystem::path> {
   }
   dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path(dir.Unwrap()) / ".config";
+    return std::filesystem::path(dir.Unwrap()) / ".config";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
   auto dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path(dir.Unwrap()) / "Library/Application Support";
+    return std::filesystem::path(dir.Unwrap()) / "Library/Application Support";
   }
   return dir;
 #endif
@@ -138,13 +137,13 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
   }
   dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path(dir.Unwrap()) / ".cache";
+    return std::filesystem::path(dir.Unwrap()) / ".cache";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
   auto dir = GetEnv("HOME");
   if (dir.IsOk()) {
-    return fs::path(dir.Unwrap()) / "Library/Caches";
+    return std::filesystem::path(dir.Unwrap()) / "Library/Caches";
   }
   return dir;
 #endif

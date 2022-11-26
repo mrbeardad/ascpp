@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vcruntime.h>
 #include <cctype>
 #include <chrono>
 #include <filesystem>
@@ -32,5 +31,14 @@ inline auto DebugGraphAnsiString(std::string_view str) -> std::string {
   }
   return ret;
 }
+
+template <typename Test, template <typename...> class Ref>
+struct is_specialization : std::false_type {};
+
+template <template <typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
+
+template <template <typename...> class Ref, typename... Args>
+constexpr bool is_specialization_v = is_specialization<Ref<Args...>, Ref>::value;
 
 }  // namespace ascpp

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vcruntime.h>
 #include <algorithm>
 #include <any>
 #include <array>
 #include <cctype>
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -19,7 +19,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include <xutility>
 
 #include "fmt/core.h"
 #include "fmt/format.h"
@@ -33,12 +32,11 @@ namespace ascpp {
 
 template <typename T>
 concept SingleOpt
-    = std::is_same_v<T, bool> || std::is_same_v<T, int> || std::is_same_v<T, size_t>
-      || std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
+    = std::is_same_v<T, bool> || std::is_same_v<T, int> || std::is_same_v<T, size_t> || std::
+        is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
 
 template <typename T>
-concept MultiOpt
-    = nlohmann::detail::is_specialization_of<std::vector, T>() && SingleOpt<typename T::value_type>;
+concept MultiOpt = is_specialization_v<std::vector, T> && SingleOpt<typename T::value_type>;
 
 template <typename T>
 concept Opt = SingleOpt<T> || MultiOpt<T>;
@@ -467,7 +465,7 @@ class Cmdline {
           break;
         }
         case Option::S_SIZE: {
-          auto value = std::stoull(opt_value);
+          auto value = static_cast<size_t>(std::stoull(opt_value));
           throw_when_invalid(value);
           opt.default_value = value;
           break;
