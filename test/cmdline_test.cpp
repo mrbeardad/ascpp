@@ -8,8 +8,37 @@
 
 #include "app.hpp"
 
-TEST(TestCmdline, BasicUsage) {
-  // bool option
+TEST(TestCmdline, MapTypeToEnum) {
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<bool>(), ascpp::Option::S_BOOL);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<int>(), ascpp::Option::S_INT);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<size_t>(), ascpp::Option::S_SIZE);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<float>(), ascpp::Option::S_FLOAT);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<double>(), ascpp::Option::S_DOUBLE);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::string>(), ascpp::Option::S_STRING);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<bool>>(), ascpp::Option::M_BOOL);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<int>>(), ascpp::Option::M_INT);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<size_t>>(), ascpp::Option::M_SIZE);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<float>>(), ascpp::Option::M_FLOAT);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<double>>(), ascpp::Option::M_DOUBLE);
+  EXPECT_EQ(ascpp::Option::MapTypeToEnum<std::vector<std::string>>(), ascpp::Option::M_STRING);
+}
+
+TEST(TestCmdline, MapTypeEnumToStr) {
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_BOOL), "bool");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_INT), "int");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_SIZE), "size_t");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_FLOAT), "float");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_DOUBLE), "double");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::S_STRING), "string");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_BOOL), "list of bool");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_INT), "list of int");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_SIZE), "list of size_t");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_FLOAT), "list of float");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_DOUBLE), "list of double");
+  EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_STRING), "list of string");
+}
+
+TEST(TestCmdline, BoolBasic) {
   auto cmd = ascpp::Cmdline{&app_info};
   auto args = std::vector<const char*>();
 
@@ -17,42 +46,80 @@ TEST(TestCmdline, BasicUsage) {
   args = {"ascpp"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+
   args = {"ascpp", "-b"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "--bool"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "-btrue"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
   args = {"ascpp", "--bool=true"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "--bool=yes"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "--bool=on"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "--bool=1"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+
   args = {"ascpp", "--bool=false"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+
   args = {"ascpp", "--bool=no"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+
   args = {"ascpp", "--bool=off"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+
   args = {"ascpp", "--bool=0"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+}
 
-  // cmd.AddOption<int>('i', "int", "integral option");
-  // cmd.AddOption<double>('d', "double", "double float point option");
-  // cmd.AddOption<std::string>('s', "string", "string option");
+TEST(TestCmdline, IntBasic) {
+  auto cmd = ascpp::Cmdline{&app_info};
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<int>('i', "int", "integral option");
+  args = {"ascpp"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-i"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-i1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+
+  args = {"ascpp", "-i", "1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+
+  args = {"ascpp", "--int"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--int", "1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+
+  args = {"ascpp", "--int=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
 }
 
 /*

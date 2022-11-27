@@ -7,7 +7,7 @@
       "request": "launch",
       "expressions": "native",
       // "initCommands": ["set set target.max-string-summary-length 10000"],
-      "program": "${workspaceFolder}/build/test/test",
+      "program": "${workspaceFolder}/build/test/test_ascpp",
       "args": [],
       "env": {}
     }
