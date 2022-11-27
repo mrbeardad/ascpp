@@ -81,10 +81,11 @@ class MyError : public std::error_category {
   }
 };
 
-ENABLE_ERROR_CODE(MyError);
+MAKE_ERROR_CODE(MyError);
+ERROR_CODE_ENUM(MyError);
 
 TEST(TestError, BasicUsage) {
-  auto err = std::make_error_code(MyError::ERR_1);
+  auto err = make_error_code(MyError::ERR_1);
   auto res = ascpp::Result<void>(err);
   EXPECT_ANY_THROW(res.Unwrap());
   EXPECT_ANY_THROW(throw std::system_error(err));
@@ -115,7 +116,7 @@ TEST(TestResult, Constructor) {
   EXPECT_EQ(res.Unwrap(), 1);
 
   res.Unwrap().Reset();
-  res = ascpp::Result<Debug>(std::make_error_code(MyError::ERR_1));
+  res = ascpp::Result<Debug>(make_error_code(MyError::ERR_1));
   EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
 
   // could not conversion from Result<void> to Result<NonVoid>
@@ -123,15 +124,15 @@ TEST(TestResult, Constructor) {
   // res = ascpp::Result<void>();
   // EXPECT_EQ(res.Unwrap(), 0);
 
-  auto void_res = ascpp::Result<void>(std::make_error_code(MyError::ERR_1));
+  auto void_res = ascpp::Result<void>(make_error_code(MyError::ERR_1));
   EXPECT_EQ(void_res.UnwrapErr(), MyError::ERR_1);
 
   void_res = ascpp::Result<int>();
   EXPECT_EQ(void_res.IsOk(), true);
 
-  res = std::make_error_code(MyError::ERR_1);
+  res = make_error_code(MyError::ERR_1);
   EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
-  res = std::make_error_code(MyError::NO_ERR);
+  res = make_error_code(MyError::NO_ERR);
   EXPECT_EQ(res.IsOk(), true);
 }
 
@@ -155,7 +156,7 @@ TEST(TestResult, BasicUsage) {
   }),
             0);
 
-  res = std::make_error_code(MyError::ERR_1);
+  res = make_error_code(MyError::ERR_1);
   EXPECT_EQ(res.IsErr(), true);
   EXPECT_EQ(res.IsOk(), false);
   EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
@@ -166,7 +167,7 @@ TEST(TestResult, BasicUsage) {
   EXPECT_EQ(res.Unwrap(), 1);
   EXPECT_EQ(res.UnwrapOrAssign(2), 1);
 
-  res = std::make_error_code(MyError::ERR_1);
+  res = make_error_code(MyError::ERR_1);
   EXPECT_EQ(res.Match([](auto&& arg) {
     OK(arg) {
       return arg.value;
@@ -184,7 +185,7 @@ auto GetResult() -> ascpp::Result<Debug> {
   if (rd(re)) {
     return -1;
   }
-  return std::make_error_code(MyError::ERR_1);
+  return make_error_code(MyError::ERR_1);
 }
 
 auto UseTryUnwrap() -> ascpp::Result<void> {

@@ -32,9 +32,10 @@ class SysErr : public std::error_category {
   }
 };
 
+MAKE_ERROR_CODE(SysErr);
 }  // namespace ascpp
 
-ENABLE_ERROR_CODE(ascpp::SysErr);
+ERROR_CODE_ENUM(ascpp::SysErr);
 
 namespace ascpp {
 
@@ -46,26 +47,26 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
   auto size = size_t();
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
-    return std::make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(SysErr::GET_ENV_ERROR);
   }
   if (size == 0) {
-    return std::make_error_code(SysErr::GET_EMPTY_ENV);
+    return make_error_code(SysErr::GET_EMPTY_ENV);
   }
 
   auto value = std::string(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return std::make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(SysErr::GET_ENV_ERROR);
   }
   value.resize(size - 1);
   return value;
 #else
   auto* value = std::getenv(name.c_str());
   if (value == nullptr) {
-    return std::make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(SysErr::GET_ENV_ERROR);
   }
   if (std::strlen(value) == 0) {
-    return std::make_error_code(SysErr::GET_EMPTY_ENV);
+    return make_error_code(SysErr::GET_EMPTY_ENV);
   }
   return value;
 #endif
@@ -77,12 +78,12 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
 inline auto SetEnv(const std::string& name, const std::string& value) -> Result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
-    return std::make_error_code(SysErr::SET_ENV_ERROR);
+    return make_error_code(SysErr::SET_ENV_ERROR);
   }
   return {};
 #else
   if (::setenv(name.c_str(), value.c_str(), 1)) {
-    return std::make_error_code(SysErr::SET_ENV_ERROR);
+    return make_error_code(SysErr::SET_ENV_ERROR);
   }
   return {};
 #endif

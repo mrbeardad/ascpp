@@ -5,7 +5,7 @@
 #include "spdlog/spdlog.h"
 
 TEST(TestLog, Basic) {
-  auto log = spdlog::basic_logger_st("basic", "test.log", true);
-  log->info("loginfo");
-  log->info("loginfo2");
+  // auto log = spdlog::basic_logger_st("basic", "test.log", true);
+  // log->info("loginfo");
+  // log->info("loginfo2");
 }

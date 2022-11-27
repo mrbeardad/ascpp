@@ -32,8 +32,8 @@ namespace ascpp {
 
 template <typename T>
 concept SingleOpt
-    = std::is_same_v<T, bool> || std::is_same_v<T, int> || std::is_same_v<T, size_t> || std::
-        is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
+    = std::is_same_v<T, bool> || std::is_same_v<T, int> || std::is_same_v<T, size_t>
+      || std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
 
 template <typename T>
 concept MultiOpt = is_specialization_v<std::vector, T> && SingleOpt<typename T::value_type>;
@@ -407,13 +407,8 @@ class Cmdline {
     }
   }
 
-  auto HasNoImplicitValue(const std::string& opt_name) -> bool {
-    return !options_.at(search_idx_.at(opt_name)).implicit_value.has_value();
-  }
-
   auto HasImplicitValue(const std::string& opt_name) -> bool {
-    auto& opt = options_.at(search_idx_.at(opt_name));
-    return opt.implicit_value.has_value() && opt.opt_type != Option::S_BOOL;
+    return options_.at(search_idx_.at(opt_name)).implicit_value.has_value();
   }
 
   auto SetValue(const std::string& opt_name, std::string opt_value) -> void {
@@ -442,10 +437,10 @@ class Cmdline {
 
     auto map_to_bool = [&opt_name, &opt_value](std::string value) {
       std::ranges::for_each(value, ::tolower);
-      if (value == "yes" || value == "on" || value == "true" || std::stoi(value) == 1) {
+      if (value == "yes" || value == "on" || value == "true" || value == "1") {
         return true;
       }
-      if (value == "no" || value == "off" || value == "false" || std::stoi(value) == 0) {
+      if (value == "no" || value == "off" || value == "false" || value == "0") {
         return false;
       }
       throw std::runtime_error("invalid value for bool option '" + opt_name + "': " + opt_value);
@@ -548,12 +543,13 @@ class Cmdline {
         }
       }
     } catch (const std::invalid_argument& ex) {
-      throw std::runtime_error("invalid value '" + opt_value + "' format for option '" + opt_name
-                               + "' that requires type " + Option::MapTypeEnumToStr(opt.opt_type));
+      throw std::runtime_error(fmt::format("invalid value format for {} option '{}': {}",
+                                           Option::MapTypeEnumToStr(opt.opt_type), opt_name,
+                                           opt_value));
     } catch (const std::out_of_range& ex) {
-      throw std::runtime_error("the given value '" + opt_value + "' is out of range for option '"
-                               + opt_name + "' that requires type "
-                               + Option::MapTypeEnumToStr(opt.opt_type));
+      throw std::runtime_error(fmt::format("the value is out of range for {} option '{}': {}",
+                                           Option::MapTypeEnumToStr(opt.opt_type), opt_name,
+                                           opt_value));
     }
   }
 

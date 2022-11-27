@@ -13,14 +13,16 @@
  * std::error_category. This macro only work in global namespace.
  *
  */
-#define ENABLE_ERROR_CODE(ErrorCategory)                                   \
-  namespace std {                                                          \
-  inline auto make_error_code(ErrorCategory::Errc ec) -> std::error_code { \
-    static auto err_cat = ErrorCategory();                                 \
-    return {ec, err_cat};                                                  \
-  }                                                                        \
-  template <>                                                              \
-  struct is_error_code_enum<ErrorCategory::Errc> : true_type {};           \
+#define MAKE_ERROR_CODE(ErrorCategory)                                   \
+  inline auto make_error_code(ErrorCategory::Errc ec)->std::error_code { \
+    static auto err_cat = ErrorCategory();                               \
+    return {ec, err_cat};                                                \
+  }
+
+#define ERROR_CODE_ENUM(ErrorCategory)                           \
+  namespace std {                                                \
+  template <>                                                    \
+  struct is_error_code_enum<ErrorCategory::Errc> : true_type {}; \
   }  // namespace ascpp
 
 namespace ascpp {

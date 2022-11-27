@@ -1,5 +1,7 @@
 #include "utils/system.hpp"
 #include <filesystem>
+#include <iostream>
+#include <ostream>
 
 #include "gtest/gtest.h"
 
