@@ -22,7 +22,6 @@
 
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "nlohmann/detail/meta/type_traits.hpp"
 
 #include "app/info.hpp"
 #include "utils/cmdline.hpp"
@@ -124,79 +123,44 @@ struct Option {
   }
 
   template <MultiOpt T>
-  auto CheckMultiValue(const T& values) -> typename T::iterator {
+  auto CheckMultiValue(const T& values) -> typename T::const_iterator {
     if (!limits.has_value()) {
-      return true;
+      return values.end();
     }
     if (limits.type() == typeid(std::unordered_set<typename T::value_type>)) {
       auto& set = std::any_cast<std::unordered_set<typename T::value_type>&>(limits);
-      return std::ranges::find(values, [&set](auto e) { return !set.contains(e); });
+      return std::ranges::find_if(values, [&set](auto e) { return !set.contains(e); });
     }
-    auto& callable = std::any_cast<std::function<bool(const typename T::value_type&)&>>(limits);
-    return std::ranges::find(values, [&callable](auto e) { return !callable(e); });
+    auto& callable = std::any_cast<std::function<bool(const typename T::value_type&)>&>(limits);
+    return std::ranges::find_if(values, [&callable](auto e) { return !callable(e); });
   }
 
   OptType opt_type;
   std::string short_opt;
   std::string long_opt;
   std::string opt_desc;
-  std::any limits = {};         ///< Store the limit value set or limit callable
-  std::any default_value = {};  ///< Also store the parsed value from command line arguments
-  std::any implicit_value = {};
+  std::any limits;         ///< Store the limit value set or limit callable
+  std::any default_value;  ///< Also store the parsed value from command line arguments
+  std::any implicit_value;
 };
 
-template <Opt T, typename = void>
-class OptionAdder;
+template <typename T, typename = void>
+struct OptValueType;
 
-template <Opt T>
-class OptionAdder<T, std::enable_if_t<SingleOpt<T>>> {
- public:
-  explicit OptionAdder(Option* opt) : opt_(opt) {}
+template <typename T>
+struct OptValueType<T, std::enable_if_t<SingleOpt<T>>> {
+  using Type = T;
+};
 
-  OptionAdder(OptionAdder&&) noexcept = default;
-  OptionAdder(const OptionAdder&) = default;
-  auto operator=(OptionAdder&&) noexcept -> OptionAdder& = default;
-  auto operator=(const OptionAdder&) -> OptionAdder& = default;
-  ~OptionAdder() = default;
-
-  auto WithLimits(std::unordered_set<T> limit_set) -> OptionAdder& {
-    opt_->limits = std::move(limit_set);
-    return *this;
-  }
-
-  auto WithLimits(std::function<bool(const T&)> callable) -> OptionAdder& {
-    opt_->limits = std::move(callable);
-    return *this;
-  }
-
-  auto WithDefault(T default_value) -> OptionAdder& {
-    if (!opt_->CheckValue(default_value)) {
-      throw std::logic_error(fmt::format("the default value is invalid for {} option '{}' : {}",
-                                         Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
-                                         default_value));
-    }
-    opt_->default_value = std::move(default_value);
-    return *this;
-  }
-
-  auto WithImplicit(T implicit_value) -> OptionAdder& {
-    if (!opt_->CheckValue(implicit_value)) {
-      throw std::logic_error(fmt::format("the implicit value is invalid for {} option '{}' : {}",
-                                         Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
-                                         implicit_value));
-    }
-    opt_->implicit_value = std::move(implicit_value);
-    return *this;
-  }
-
- private:
-  Option* opt_;
+template <typename T>
+struct OptValueType<T, std::enable_if_t<MultiOpt<T>>> {
+  using Type = typename T::value_type;
 };
 
 template <Opt T>
-class OptionAdder<T, std::enable_if<MultiOpt<T>>> {
+class OptionAdder {
  public:
-  using ValueType = typename T::value_type;
+  using ValueType = typename OptValueType<T>::Type;
 
   explicit OptionAdder(Option* opt) : opt_(opt) {}
 
@@ -206,31 +170,47 @@ class OptionAdder<T, std::enable_if<MultiOpt<T>>> {
   auto operator=(const OptionAdder&) -> OptionAdder& = default;
   ~OptionAdder() = default;
 
-  auto WithLimit(std::unordered_set<ValueType> limit_set) -> OptionAdder& {
+  auto WithLimits(std::unordered_set<ValueType> limit_set) -> OptionAdder& {
     opt_->limits = std::move(limit_set);
     return *this;
   }
 
-  auto WithLimit(std::function<bool(const ValueType&)> callable) -> OptionAdder& {
+  auto WithLimits(std::function<bool(const ValueType&)> callable) -> OptionAdder& {
     opt_->limits = std::move(callable);
     return *this;
   }
 
   auto WithDefault(T default_value) -> OptionAdder& {
-    if (auto itr = opt_->CheckMultiValue(default_value); itr != default_value.end()) {
-      throw std::logic_error(
-          fmt::format("the value in default values is invalid for {} option '{}': {}",
-                      Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+    if constexpr (SingleOpt<T>) {
+      if (!opt_->CheckValue(default_value)) {
+        throw std::logic_error(fmt::format("the default value is invalid for {} option '{}' : {}",
+                                           Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
+                                           default_value));
+      }
+    } else {
+      if (auto itr = opt_->CheckMultiValue(default_value); itr != default_value.end()) {
+        throw std::logic_error(
+            fmt::format("the value in default values is invalid for {} option '{}': {}",
+                        Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+      }
     }
     opt_->default_value = std::move(default_value);
     return *this;
   }
 
   auto WithImplicit(T implicit_value) -> OptionAdder& {
-    if (auto itr = opt_->CheckMultiValue(implicit_value); itr != implicit_value.end()) {
-      throw std::logic_error(
-          fmt::format("the value in implicit values is invalid for {} option '{}': {}",
-                      Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+    if constexpr (SingleOpt<T>) {
+      if (!opt_->CheckValue(implicit_value)) {
+        throw std::logic_error(fmt::format("the implicit value is invalid for {} option '{}' : {}",
+                                           Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
+                                           implicit_value));
+      }
+    } else {
+      if (auto itr = opt_->CheckMultiValue(implicit_value); itr != implicit_value.end()) {
+        throw std::logic_error(
+            fmt::format("the value in implicit values is invalid for {} option '{}': {}",
+                        Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+      }
     }
     opt_->implicit_value = std::move(implicit_value);
     return *this;
@@ -241,9 +221,6 @@ class OptionAdder<T, std::enable_if<MultiOpt<T>>> {
 };
 
 class Cmdline {
-  template <Opt T, typename>
-  friend class OptionAdder;
-
  public:
   explicit Cmdline(const AppInfo* app_info) : app_info_(app_info) {}
 
@@ -273,6 +250,7 @@ class Cmdline {
   template <Opt T>
   auto AddOption(std::string long_opt, std::string opt_desc) -> OptionAdder<T> {
     CheckLongOpt(long_opt);
+
     search_idx_[long_opt] = options_.size();
     options_.emplace_back(
         Option{Option::MapTypeToEnum<T>(), "", std::move(long_opt), std::move(opt_desc)});
@@ -282,6 +260,14 @@ class Cmdline {
       opt_adder.WithDefault(false).WithImplicit(true);
     }
     return opt_adder;
+  }
+
+  auto GetOption(const std::string& long_opt) -> const Option& {
+    return options_.at(search_idx_.at(long_opt));
+  }
+
+  auto GetOption(char short_opt) -> const Option& {
+    return options_.at(search_idx_.at({short_opt}));
   }
 
   auto ParseArgs(int argc, const char* const argv[], bool silent = false) -> void {

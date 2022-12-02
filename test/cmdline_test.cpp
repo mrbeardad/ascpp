@@ -1,7 +1,10 @@
 #include "utils/cmdline.hpp"
 
+#include <any>
+#include <functional>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -36,6 +39,181 @@ TEST(TestCmdline, MapTypeEnumToStr) {
   EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_FLOAT), "list of float");
   EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_DOUBLE), "list of double");
   EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_STRING), "list of string");
+}
+
+TEST(TestCmdline, AddSingleOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
+
+  cmd.AddOption<bool>('b', "bool", "bool desc");
+  auto& b = cmd.GetOption('b');
+  auto& bol = cmd.GetOption("bool");
+  EXPECT_EQ(&b, &bol);
+  EXPECT_EQ(bol.opt_type, ascpp::Option::S_BOOL);
+  EXPECT_EQ(bol.short_opt, "b");
+  EXPECT_EQ(bol.long_opt, "bool");
+  EXPECT_EQ(bol.opt_desc, "bool desc");
+  EXPECT_EQ(bol.limits.has_value(), false);
+  EXPECT_EQ(std::any_cast<bool>(bol.default_value), false);
+  EXPECT_EQ(std::any_cast<bool>(bol.implicit_value), true);
+
+  cmd.AddOption<int>("int", "int desc");
+  auto& intt = cmd.GetOption("int");
+  EXPECT_EQ(intt.opt_type, ascpp::Option::S_INT);
+  EXPECT_EQ(intt.short_opt, "");
+  EXPECT_EQ(intt.long_opt, "int");
+  EXPECT_EQ(intt.opt_desc, "int desc");
+  EXPECT_EQ(intt.limits.has_value(), false);
+  EXPECT_EQ(intt.default_value.has_value(), false);
+  EXPECT_EQ(intt.implicit_value.has_value(), false);
+
+  auto limit_set_adder = cmd.AddOption<size_t>("size_t", "size_t desc").WithLimits({0, 1, 2});
+  auto& size = cmd.GetOption("size_t");
+  EXPECT_EQ(size.opt_type, ascpp::Option::S_SIZE);
+  EXPECT_EQ(size.short_opt, "");
+  EXPECT_EQ(size.long_opt, "size_t");
+  EXPECT_EQ(size.opt_desc, "size_t desc");
+  auto size_set = std::unordered_set<size_t>{0, 1, 2};
+  EXPECT_EQ(std::any_cast<const std::unordered_set<size_t>&>(size.limits), size_set);
+  EXPECT_EQ(size.default_value.has_value(), false);
+  EXPECT_EQ(size.implicit_value.has_value(), false);
+
+  EXPECT_ANY_THROW(limit_set_adder.WithDefault(3));
+  EXPECT_ANY_THROW(limit_set_adder.WithImplicit(-1));
+  limit_set_adder.WithDefault(0);
+  EXPECT_EQ(std::any_cast<size_t>(size.default_value), 0);
+  limit_set_adder.WithImplicit(1);
+  EXPECT_EQ(std::any_cast<size_t>(size.implicit_value), 1);
+
+  auto limit_pred_adder
+      = cmd.AddOption<float>("float", "float desc").WithLimits([](auto v) { return v > 0; });
+  auto& flt = cmd.GetOption("float");
+  EXPECT_EQ(flt.opt_type, ascpp::Option::S_FLOAT);
+  EXPECT_EQ(flt.short_opt, "");
+  EXPECT_EQ(flt.long_opt, "float");
+  EXPECT_EQ(flt.opt_desc, "float desc");
+  EXPECT_EQ(std::any_cast<const std::function<bool(const float&)>&>(flt.limits)(1), true);
+  EXPECT_EQ(std::any_cast<const std::function<bool(const float&)>&>(flt.limits)(0), false);
+  EXPECT_EQ(flt.default_value.has_value(), false);
+  EXPECT_EQ(flt.implicit_value.has_value(), false);
+
+  EXPECT_ANY_THROW(limit_pred_adder.WithDefault(-1));
+  EXPECT_ANY_THROW(limit_pred_adder.WithImplicit(0));
+  limit_pred_adder.WithDefault(1);
+  EXPECT_FLOAT_EQ(std::any_cast<float>(flt.default_value), 1);
+  limit_pred_adder.WithImplicit(2);
+  EXPECT_FLOAT_EQ(std::any_cast<float>(flt.implicit_value), 2);
+
+  cmd.AddOption<double>("double", "double desc").WithDefault(1.5);
+  auto& dbl = cmd.GetOption("double");
+  EXPECT_EQ(dbl.opt_type, ascpp::Option::S_DOUBLE);
+  EXPECT_EQ(dbl.short_opt, "");
+  EXPECT_EQ(dbl.long_opt, "double");
+  EXPECT_EQ(dbl.opt_desc, "double desc");
+  EXPECT_EQ(dbl.limits.has_value(), false);
+  EXPECT_DOUBLE_EQ(std::any_cast<double>(dbl.default_value), 1.5);
+  EXPECT_EQ(dbl.implicit_value.has_value(), false);
+
+  cmd.AddOption<std::string>("string", "string desc").WithImplicit("str");
+  auto& str = cmd.GetOption("string");
+  EXPECT_EQ(str.opt_type, ascpp::Option::S_STRING);
+  EXPECT_EQ(str.short_opt, "");
+  EXPECT_EQ(str.long_opt, "string");
+  EXPECT_EQ(str.opt_desc, "string desc");
+  EXPECT_EQ(str.limits.has_value(), false);
+  EXPECT_EQ(str.default_value.has_value(), false);
+  EXPECT_EQ(std::any_cast<std::string>(str.implicit_value), "str");
+}
+
+TEST(TestCmdline, AddMultiOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
+
+  cmd.AddOption<std::vector<bool>>('b', "bool", "bool desc");
+  auto& b = cmd.GetOption('b');
+  auto& bol = cmd.GetOption("bool");
+  EXPECT_EQ(&b, &bol);
+  EXPECT_EQ(bol.opt_type, ascpp::Option::M_BOOL);
+  EXPECT_EQ(bol.short_opt, "b");
+  EXPECT_EQ(bol.long_opt, "bool");
+  EXPECT_EQ(bol.opt_desc, "bool desc");
+  EXPECT_EQ(bol.limits.has_value(), false);
+  EXPECT_EQ(bol.default_value.has_value(), false);
+  EXPECT_EQ(bol.implicit_value.has_value(), false);
+
+  cmd.AddOption<std::vector<int>>("int", "int desc");
+  auto& intt = cmd.GetOption("int");
+  EXPECT_EQ(intt.opt_type, ascpp::Option::M_INT);
+  EXPECT_EQ(intt.short_opt, "");
+  EXPECT_EQ(intt.long_opt, "int");
+  EXPECT_EQ(intt.opt_desc, "int desc");
+  EXPECT_EQ(intt.limits.has_value(), false);
+  EXPECT_EQ(intt.default_value.has_value(), false);
+  EXPECT_EQ(intt.implicit_value.has_value(), false);
+
+  auto limit_set_adder
+      = cmd.AddOption<std::vector<size_t>>("size_t", "size_t desc").WithLimits({0, 1, 2});
+  auto& size = cmd.GetOption("size_t");
+  EXPECT_EQ(size.opt_type, ascpp::Option::M_SIZE);
+  EXPECT_EQ(size.short_opt, "");
+  EXPECT_EQ(size.long_opt, "size_t");
+  EXPECT_EQ(size.opt_desc, "size_t desc");
+  auto size_set = std::unordered_set<size_t>{0, 1, 2};
+  EXPECT_EQ(std::any_cast<const std::unordered_set<size_t>&>(size.limits), size_set);
+  EXPECT_EQ(size.default_value.has_value(), false);
+  EXPECT_EQ(size.implicit_value.has_value(), false);
+
+  EXPECT_ANY_THROW(limit_set_adder.WithDefault({3}));
+  EXPECT_ANY_THROW(limit_set_adder.WithImplicit({2, 3}));
+  auto size_vec = std::vector<size_t>{1};
+  limit_set_adder.WithDefault({1});
+  EXPECT_EQ(std::any_cast<const std::vector<size_t>&>(size.default_value), size_vec);
+  size_vec = {0, 1, 2};
+  limit_set_adder.WithImplicit({0, 1, 2});
+  EXPECT_EQ(std::any_cast<const std::vector<size_t>&>(size.implicit_value), size_vec);
+
+  auto limit_pred_adder
+      = cmd.AddOption<std::vector<float>>("float", "float desc").WithLimits([](auto v) {
+          return v > 0;
+        });
+  auto& flt = cmd.GetOption("float");
+  EXPECT_EQ(flt.opt_type, ascpp::Option::M_FLOAT);
+  EXPECT_EQ(flt.short_opt, "");
+  EXPECT_EQ(flt.long_opt, "float");
+  EXPECT_EQ(flt.opt_desc, "float desc");
+  EXPECT_EQ(std::any_cast<const std::function<bool(const float&)>&>(flt.limits)(1), true);
+  EXPECT_EQ(std::any_cast<const std::function<bool(const float&)>&>(flt.limits)(0), false);
+  EXPECT_EQ(flt.default_value.has_value(), false);
+  EXPECT_EQ(flt.implicit_value.has_value(), false);
+
+  EXPECT_ANY_THROW(limit_pred_adder.WithDefault({0, 1}));
+  EXPECT_ANY_THROW(limit_pred_adder.WithImplicit({-1}));
+  limit_pred_adder.WithDefault({1}).WithImplicit({2, 3});
+  ;
+  auto flt_vec = std::vector<float>{1};
+  EXPECT_EQ(std::any_cast<const std::vector<float>&>(flt.default_value), flt_vec);
+  flt_vec = {2, 3};
+  EXPECT_EQ(std::any_cast<const std::vector<float>&>(flt.implicit_value), flt_vec);
+
+  cmd.AddOption<std::vector<double>>("double", "double desc").WithDefault({1.5});
+  auto& dbl = cmd.GetOption("double");
+  EXPECT_EQ(dbl.opt_type, ascpp::Option::M_DOUBLE);
+  EXPECT_EQ(dbl.short_opt, "");
+  EXPECT_EQ(dbl.long_opt, "double");
+  EXPECT_EQ(dbl.opt_desc, "double desc");
+  EXPECT_EQ(dbl.limits.has_value(), false);
+  auto dbl_vec = std::vector<double>{1.5};
+  EXPECT_EQ(std::any_cast<const std::vector<double>&>(dbl.default_value), dbl_vec);
+  EXPECT_EQ(dbl.implicit_value.has_value(), false);
+
+  cmd.AddOption<std::vector<std::string>>("string", "string desc").WithImplicit({"str"});
+  auto& str = cmd.GetOption("string");
+  EXPECT_EQ(str.opt_type, ascpp::Option::M_STRING);
+  EXPECT_EQ(str.short_opt, "");
+  EXPECT_EQ(str.long_opt, "string");
+  EXPECT_EQ(str.opt_desc, "string desc");
+  EXPECT_EQ(str.limits.has_value(), false);
+  EXPECT_EQ(str.default_value.has_value(), false);
+  auto str_vec = std::vector<std::string>{"str"};
+  EXPECT_EQ(std::any_cast<const std::vector<std::string>&>(str.implicit_value), str_vec);
 }
 
 TEST(TestCmdline, BoolBasic) {
