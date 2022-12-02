@@ -1,10 +1,12 @@
 #pragma once
 
+#include <stdlib.h>
 #include <algorithm>
 #include <any>
 #include <array>
 #include <cctype>
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -270,13 +272,14 @@ class Cmdline {
     return options_.at(search_idx_.at({short_opt}));
   }
 
-  auto ParseArgs(int argc, const char* const argv[], bool silent = false) -> void {
-    auto cerr_and_throw = [silent](const std::string& msg) {
-      if (!silent) {
-        std::cerr << msg;
-      }
-      throw std::runtime_error(msg);
-    };
+  auto HelpString() -> std::string {
+    auto ret = app_info_->AppName() + " " + app_info_->AppVersion() + "\n"
+               + app_info_->AppDescription() + "\n\n";
+    for (auto& opt : options_) {
+    }
+  }
+
+  auto ParseArgs(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
     auto end_parse = false;
 
     for (auto i = 1; i < argc; ++i) {
@@ -291,17 +294,17 @@ class Cmdline {
         auto opt_name = this_arg.substr(2, es_pos - 2);
 
         if (search_idx_.find(opt_name) == search_idx_.end()) {
-          cerr_and_throw("no option '" + opt_name + "'");
+          throw std::runtime_error("no option '" + opt_name + "'");
         }
         if (opt_name.size() < 2) {
-          cerr_and_throw("wrong form for short option: " + this_arg);
+          throw std::runtime_error("wrong form for short option: " + this_arg);
         }
 
         if (es_pos == std::string::npos) {
           // form: --option [value]
           if (!HasImplicitValue(opt_name)) {
             if (i + 1 >= argc) {
-              cerr_and_throw("requires a value for option '" + opt_name + "'");
+              throw std::runtime_error("requires a value for option '" + opt_name + "'");
             }
             SetValue(opt_name, argv[++i]);
           } else {
@@ -320,13 +323,13 @@ class Cmdline {
           auto cur_opt = std::string{this_arg[j]};
           auto opt_idx = search_idx_.find(cur_opt);
           if (opt_idx == search_idx_.end()) {
-            cerr_and_throw("no option '" + cur_opt + "'");
+            throw std::runtime_error("no option '" + cur_opt + "'");
           }
           if (!HasImplicitValue(cur_opt)) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt value
               if (i + 1 >= argc) {
-                cerr_and_throw("requires a value for option '" + cur_opt + "'");
+                throw std::runtime_error("requires a value for option '" + cur_opt + "'");
               }
               SetValue(cur_opt, argv[++i]);
             } else {
@@ -354,9 +357,17 @@ class Cmdline {
 
     for (auto& opt : options_) {
       if (!opt.default_value.has_value()) {
-        cerr_and_throw("requires option '" + opt.long_opt + "'");
+        throw std::runtime_error("requires option '" + opt.long_opt + "'");
       }
     }
+  } catch (const std::exception& excep) {
+    if (print_and_exit) {
+      std::cerr << excep.what() << std::endl;
+      std::cerr << "---\n" << std::endl;
+      std::cerr << HelpString() << std::endl;
+      std::exit(1);
+    }
+    throw;
   }
 
   template <Opt T>
