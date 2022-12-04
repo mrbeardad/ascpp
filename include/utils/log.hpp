@@ -40,7 +40,7 @@ class Logger {
   Logger(const AppInfo& info, const Config& cfg) {
     switch (cfg.log_to) {
       case kFile: {
-        auto filepath = fs::path{};
+        auto filepath = std::filesystem::path{};
         if (cfg.file_path.empty()) {
           filepath = GetCacheDir().Unwrap();
           filepath /= info.OrgName();
