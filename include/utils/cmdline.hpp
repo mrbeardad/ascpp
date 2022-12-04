@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stdlib.h>
 #include <algorithm>
 #include <any>
 #include <array>
@@ -141,9 +140,9 @@ struct Option {
   std::string short_opt;
   std::string long_opt;
   std::string opt_desc;
-  std::any limits;         ///< Store the limit value set or limit callable
-  std::any default_value;  ///< Also store the parsed value from command line arguments
-  std::any implicit_value;
+  std::any limits = {};         ///< Store the limit value set or limit callable
+  std::any default_value = {};  ///< Also store the parsed value from command line arguments
+  std::any implicit_value = {};
 };
 
 template <typename T, typename = void>
@@ -273,10 +272,64 @@ class Cmdline {
   }
 
   auto HelpString() -> std::string {
-    auto ret = app_info_->AppName() + " " + app_info_->AppVersion() + "\n"
-               + app_info_->AppDescription() + "\n\n";
+    auto opt_str = [](Option& opt) {
+      auto ret = ""s;
+      if (!opt.implicit_value.has_value()) {
+        ret = fmt::format("--{}=<{}>", opt.long_opt, Option::MapTypeEnumToStr(opt.opt_type));
+      } else if (opt.opt_type != Option::S_BOOL) {
+        ret = fmt::format("--{}[=<{}>]", opt.long_opt, Option::MapTypeEnumToStr(opt.opt_type));
+      } else {
+        ret = fmt::format("--{}", opt.long_opt);
+      }
+      return ret;
+    };
+
+    auto ret = ""s;
+    ret += app_info_->AppName() + " " + app_info_->AppVersion() + "\n";
+    ret += app_info_->AppDescription() + "\n\n";
+
+    auto required_opts = std::vector<Option*>();
+    auto optional_opts = std::vector<Option*>();
     for (auto& opt : options_) {
+      if (!opt.default_value.has_value()) {
+        required_opts.emplace_back(&opt);
+      } else {
+        optional_opts.emplace_back(&opt);
+      }
     }
+    ret += "USAGE:\n  " + app_info_->AppName() + " ";
+    for (auto opt : required_opts) {
+      ret += opt_str(*opt) + " ";
+    }
+    if (required_opts.size() == options_.size()) {
+      return ret;
+    }
+
+    ret += "\n\nOPTIONS:\n";
+    auto max_width_of_opt_name_col = static_cast<size_t>(0);
+    auto opt_name_col = std::vector<std::string>();
+    auto opt_name_col_width = std::vector<size_t>();
+    auto opt_desc_col = std::vector<std::string>();
+    for (auto opt : optional_opts) {
+      auto opt_name = "  "s;
+      if (!opt->short_opt.empty()) {
+        opt_name += "-" + opt->short_opt + ", ";
+      } else {
+        opt_name += "    ";
+      }
+      opt_name += opt_str(*opt);
+      auto width = fmt::detail::compute_width(opt_name);
+      opt_name_col_width.emplace_back(width);
+      max_width_of_opt_name_col = std::max(max_width_of_opt_name_col, width);
+      opt_name_col.emplace_back(opt_name);
+      opt_desc_col.emplace_back(opt->opt_desc);
+    }
+    for (auto i = 0ULL; i < opt_name_col.size(); ++i) {
+      ret += opt_name_col[i] + std::string(max_width_of_opt_name_col - opt_name_col_width[i], ' ');
+      // TODO: option description wrap line
+      ret += "\t-- " + opt_desc_col[i] + "\n";
+    }
+    return ret;
   }
 
   auto ParseArgs(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
@@ -380,6 +433,8 @@ class Cmdline {
     return GetValue<T>({opt_name});
   }
 
+  auto GetNonOptions() -> const std::vector<std::string>& { return nonoptions_; }
+
  private:
   auto CheckShortOpt(char opt_name) const -> void {
     auto str_opt = std::string{opt_name};
@@ -451,25 +506,33 @@ class Cmdline {
           break;
         }
         case Option::S_INT: {
-          auto value = std::stoi(opt_value);
+          auto value = Stoi(opt_value);
           throw_when_invalid(value);
           opt.default_value = value;
           break;
         }
         case Option::S_SIZE: {
-          auto value = static_cast<size_t>(std::stoull(opt_value));
+          auto value = static_cast<size_t>(Stoull(opt_value));
           throw_when_invalid(value);
           opt.default_value = value;
           break;
         }
         case Option::S_FLOAT: {
-          auto value = std::stof(opt_value);
+          auto idx = 0ULL;
+          auto value = std::stof(opt_value, &idx);
+          if (idx != opt_value.size()) {
+            throw std::invalid_argument("");
+          }
           throw_when_invalid(value);
           opt.default_value = value;
           break;
         }
         case Option::S_DOUBLE: {
-          auto value = std::stod(opt_value);
+          auto idx = 0ULL;
+          auto value = std::stod(opt_value, &idx);
+          if (idx != opt_value.size()) {
+            throw std::invalid_argument("");
+          }
           throw_when_invalid(value);
           opt.default_value = value;
           break;
@@ -491,7 +554,7 @@ class Cmdline {
         case Option::M_INT: {
           auto vec = std::vector<int>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = std::stoi(std::string(word.begin(), word.end()));
+            auto value = Stoi(std::string(word.begin(), word.end()));
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -501,7 +564,7 @@ class Cmdline {
         case Option::M_SIZE: {
           auto vec = std::vector<size_t>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = std::stoull(std::string(word.begin(), word.end()));
+            auto value = Stoull(std::string(word.begin(), word.end()));
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -511,7 +574,11 @@ class Cmdline {
         case Option::M_FLOAT: {
           auto vec = std::vector<float>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = std::stof(std::string(word.begin(), word.end()));
+            auto idx = 0ULL;
+            auto value = std::stof(std::string(word.begin(), word.end()), &idx);
+            if (idx != opt_value.size()) {
+              throw std::invalid_argument("");
+            }
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -521,7 +588,11 @@ class Cmdline {
         case Option::M_DOUBLE: {
           auto vec = std::vector<double>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = std::stod(std::string(word.begin(), word.end()));
+            auto idx = 0ULL;
+            auto value = std::stod(std::string(word.begin(), word.end()), &idx);
+            if (idx != opt_value.size()) {
+              throw std::invalid_argument("");
+            }
             throw_when_invalid(value);
             vec.emplace_back(value);
           }

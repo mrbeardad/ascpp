@@ -1,7 +1,8 @@
 #pragma once
 
-#include <format>
 #include <string>
+
+#include "fmt/format.h"
 
 namespace ascpp {
 
@@ -35,7 +36,7 @@ class AppInfo {
   auto AppDescription() const -> const std::string& { return app_desc_; }
 
   auto AppVersion() const -> std::string {
-    return std::format("v{}.{}.{}", major_ver_, minor_ver_, patch_ver_);
+    return fmt::format("{}.{}.{}", major_ver_, minor_ver_, patch_ver_);
   }
 
   auto AppMajorVersion() const -> int { return major_ver_; }
@@ -48,6 +49,7 @@ class AppInfo {
   std::string org_name_;
   std::string app_name_;
   std::string app_desc_;
+  std::string app_usage_;
   int major_ver_;
   int minor_ver_;
   int patch_ver_;

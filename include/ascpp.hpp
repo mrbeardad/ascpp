@@ -15,14 +15,20 @@ struct AppConfig {
   std::string org_name;
   std::string app_name;
   std::string app_desc;
-  std::string app_version;
+  int major_ver;
+  int minor_ver;
+  int patch_ver;
 };
 
 class App : public AppInfo, public Cmdline {
  public:
   explicit App(AppConfig config)
-      : AppInfo{std::move(config.org_name), std::move(config.app_name), std::move(config.app_desc),
-                std::move(config.app_version)},
+      : AppInfo(std::move(config.org_name),
+                std::move(config.app_name),
+                std::move(config.app_desc),
+                config.major_ver,
+                config.minor_ver,
+                config.patch_ver),
         Cmdline{static_cast<AppInfo*>(this)} {}
 
   App(App&&) = default;

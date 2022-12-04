@@ -188,7 +188,7 @@ auto GetResult() -> ascpp::Result<Debug> {
   return make_error_code(MyError::ERR_1);
 }
 
-auto UseTryUnwrap() -> ascpp::Result<void> {
+auto UseTryUnwrap() -> ascpp::Result<Debug> {
   auto res = TRY_UNWRAP(GetResult());
   // do something ...
   return {};
@@ -197,10 +197,10 @@ auto UseTryUnwrap() -> ascpp::Result<void> {
 TEST(TestResult, TryUnwrap) {
   UseTryUnwrap().Match([](auto&& arg) {
     OK(arg) {
-      std::clog << "OK" << std::endl;
+      return arg;
     }
     ERR(arg) {
-      std::clog << "ERR" << std::endl;
+      return Debug();
     }
   });
 }

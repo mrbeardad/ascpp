@@ -3,6 +3,7 @@
 #include <any>
 #include <functional>
 #include <iostream>
+#include <ostream>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -41,7 +42,7 @@ TEST(TestCmdline, MapTypeEnumToStr) {
   EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_STRING), "list of string");
 }
 
-TEST(TestCmdline, AddSingleOption) {
+TEST(TestCmdline, AddSingleOptions) {
   auto cmd = ascpp::Cmdline(&app_info);
 
   cmd.AddOption<bool>('b', "bool", "bool desc");
@@ -122,9 +123,11 @@ TEST(TestCmdline, AddSingleOption) {
   EXPECT_EQ(str.limits.has_value(), false);
   EXPECT_EQ(str.default_value.has_value(), false);
   EXPECT_EQ(std::any_cast<std::string>(str.implicit_value), "str");
+
+  std::clog << cmd.HelpString() << std::endl;
 }
 
-TEST(TestCmdline, AddMultiOption) {
+TEST(TestCmdline, AddMultiOptions) {
   auto cmd = ascpp::Cmdline(&app_info);
 
   cmd.AddOption<std::vector<bool>>('b', "bool", "bool desc");
@@ -214,6 +217,26 @@ TEST(TestCmdline, AddMultiOption) {
   EXPECT_EQ(str.default_value.has_value(), false);
   auto str_vec = std::vector<std::string>{"str"};
   EXPECT_EQ(std::any_cast<const std::vector<std::string>&>(str.implicit_value), str_vec);
+
+  std::clog << cmd.HelpString() << std::endl;
+}
+
+TEST(TestCmdline, AddBadOptions) {
+  auto cmd = ascpp::Cmdline{&app_info};
+
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\0', "zero", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\t', "tab", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\n', "newline", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>(' ', "space", ""));
+  cmd.AddOption<bool>('=', "punct", "");
+  EXPECT_EQ(cmd.GetOption('=').short_opt, "=");
+  EXPECT_EQ(cmd.GetOption('=').long_opt, "punct");
+
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("1", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("with space", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("with=", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("=with", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("选项", ""));
 }
 
 TEST(TestCmdline, BoolBasic) {
