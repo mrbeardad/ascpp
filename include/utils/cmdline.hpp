@@ -140,9 +140,10 @@ struct Option {
   std::string short_opt;
   std::string long_opt;
   std::string opt_desc;
-  std::any limits = {};         ///< Store the limit value set or limit callable
-  std::any default_value = {};  ///< Also store the parsed value from command line arguments
+  std::any limits = {};  ///< Store the limit value set or limit callable
+  std::any default_value = {};
   std::any implicit_value = {};
+  std::any result_value = {};
 };
 
 template <typename T, typename = void>
@@ -333,12 +334,18 @@ class Cmdline {
   }
 
   auto ParseArgs(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
+    for (auto& opt : options_) {
+      opt.result_value.reset();
+    }
+    nonoptions_.clear();
+
     auto end_parse = false;
 
     for (auto i = 1; i < argc; ++i) {
       auto this_arg = std::string(argv[i]);
       if (end_parse) {
         nonoptions_.emplace_back(this_arg);
+        continue;
       }
       if (this_arg == "--") {
         end_parse = true;
@@ -409,8 +416,11 @@ class Cmdline {
     }
 
     for (auto& opt : options_) {
-      if (!opt.default_value.has_value()) {
-        throw std::runtime_error("requires option '" + opt.long_opt + "'");
+      if (!opt.result_value.has_value()) {
+        if (!opt.default_value.has_value()) {
+          throw std::runtime_error("requires option '" + opt.long_opt + "'");
+        }
+        opt.result_value = opt.default_value;
       }
     }
   } catch (const std::exception& excep) {
@@ -425,7 +435,7 @@ class Cmdline {
 
   template <Opt T>
   auto GetValue(const std::string& opt_name) -> const T& {
-    return std::any_cast<T&>(options_.at(search_idx_.at(opt_name)).default_value);
+    return std::any_cast<T&>(options_.at(search_idx_.at(opt_name)).result_value);
   }
 
   template <Opt T>
@@ -502,19 +512,19 @@ class Cmdline {
       switch (opt.opt_type) {
         case Option::S_BOOL: {
           std::ranges::for_each(opt_value, ::tolower);
-          opt.default_value = map_to_bool(opt_value);
+          opt.result_value = map_to_bool(opt_value);
           break;
         }
         case Option::S_INT: {
           auto value = Stoi(opt_value);
           throw_when_invalid(value);
-          opt.default_value = value;
+          opt.result_value = value;
           break;
         }
         case Option::S_SIZE: {
           auto value = static_cast<size_t>(Stoull(opt_value));
           throw_when_invalid(value);
-          opt.default_value = value;
+          opt.result_value = value;
           break;
         }
         case Option::S_FLOAT: {
@@ -524,7 +534,7 @@ class Cmdline {
             throw std::invalid_argument("");
           }
           throw_when_invalid(value);
-          opt.default_value = value;
+          opt.result_value = value;
           break;
         }
         case Option::S_DOUBLE: {
@@ -534,13 +544,13 @@ class Cmdline {
             throw std::invalid_argument("");
           }
           throw_when_invalid(value);
-          opt.default_value = value;
+          opt.result_value = value;
           break;
         }
         case Option::S_STRING: {
           auto& value = opt_value;
           throw_when_invalid(value);
-          opt.default_value = value;
+          opt.result_value = value;
           break;
         }
         case Option::M_BOOL: {
@@ -548,7 +558,7 @@ class Cmdline {
           for (auto word : std::views::split(opt_value, ",")) {
             vec.emplace_back(map_to_bool({word.begin(), word.end()}));
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
         case Option::M_INT: {
@@ -558,7 +568,7 @@ class Cmdline {
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
         case Option::M_SIZE: {
@@ -568,7 +578,7 @@ class Cmdline {
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
         case Option::M_FLOAT: {
@@ -582,7 +592,7 @@ class Cmdline {
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
         case Option::M_DOUBLE: {
@@ -596,7 +606,7 @@ class Cmdline {
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
         case Option::M_STRING: {
@@ -606,7 +616,7 @@ class Cmdline {
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
-          opt.default_value = vec;
+          opt.result_value = vec;
           break;
         }
       }
@@ -626,7 +636,7 @@ class Cmdline {
     if (!opt.implicit_value.has_value()) {
       throw std::runtime_error("option '" + opt_name + "' has no implicit value");
     }
-    opt.default_value = opt.implicit_value;
+    opt.result_value = opt.implicit_value;
   }
 
   const AppInfo* app_info_;

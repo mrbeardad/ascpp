@@ -243,84 +243,264 @@ TEST(TestCmdline, BoolBasic) {
   auto cmd = ascpp::Cmdline{&app_info};
   auto args = std::vector<const char*>();
 
-  cmd.AddOption<bool>('b', "bool", "boolean option");
+  cmd.AddOption<bool>('o', "opt", "bool option");
   args = {"ascpp"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
 
-  args = {"ascpp", "-b"};
+  args = {"ascpp", "-o"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
 
-  args = {"ascpp", "--bool"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
-
-  args = {"ascpp", "-btrue"};
+  // bool short option requires no value
+  args = {"ascpp", "-ofalse"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "--bool=true"};
+  args = {"ascpp", "-o", "false"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"false"});
 
-  args = {"ascpp", "--bool=yes"};
+  args = {"ascpp", "--opt"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
 
-  args = {"ascpp", "--bool=on"};
+  args = {"ascpp", "--opt", "false"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"false"});
 
-  args = {"ascpp", "--bool=1"};
+  args = {"ascpp", "--opt=true"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), true);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
 
-  args = {"ascpp", "--bool=false"};
+  args = {"ascpp", "--opt=false"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
 
-  args = {"ascpp", "--bool=no"};
+  args = {"ascpp", "--opt=yes"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
 
-  args = {"ascpp", "--bool=off"};
+  args = {"ascpp", "--opt=no"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
 
-  args = {"ascpp", "--bool=0"};
+  args = {"ascpp", "--opt=on"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<bool>("bool"), false);
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
+
+  args = {"ascpp", "--opt=off"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
+
+  args = {"ascpp", "--opt=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
+
+  args = {"ascpp", "--opt=0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
+
+  args = {"ascpp", "--opt=other"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=2"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=-1"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 }
 
 TEST(TestCmdline, IntBasic) {
   auto cmd = ascpp::Cmdline{&app_info};
   auto args = std::vector<const char*>();
 
-  cmd.AddOption<int>('i', "int", "integral option");
+  cmd.AddOption<int>('o', "opt", "int option");
   args = {"ascpp"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "-i"};
+  args = {"ascpp", "-o"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "-i1"};
+  args = {"ascpp", "-o0"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
 
-  args = {"ascpp", "-i", "1"};
+  args = {"ascpp", "-o2147483647"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
 
-  args = {"ascpp", "--int"};
+  args = {"ascpp", "-o2147483648"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "--int", "1"};
+  args = {"ascpp", "-o-2147483648"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
 
-  args = {"ascpp", "--int=1"};
+  args = {"ascpp", "-o-2147483649"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o", "0"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("int"), 1);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
+
+  args = {"ascpp", "-o", "2147483647"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
+
+  args = {"ascpp", "-o", "2147483648"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o", "-2147483648"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
+
+  args = {"ascpp", "-o", "-2147483649"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
+
+  args = {"ascpp", "--opt", "2147483647"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
+
+  args = {"ascpp", "--opt", "2147483648"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "-2147483648"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
+
+  args = {"ascpp", "--opt", "-2147483649"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
+
+  args = {"ascpp", "--opt=2147483647"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
+
+  args = {"ascpp", "--opt=2147483648"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=-2147483648"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
+
+  args = {"ascpp", "--opt=-2147483649"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+}
+
+TEST(TestCmdline, SizeBasic) {
+  auto cmd = ascpp::Cmdline{&app_info};
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<size_t>('o', "opt", "size_t option");
+  args = {"ascpp"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
+
+  args = {"ascpp", "-o18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "-o18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  // unsigned integer wraparound rules
+  args = {"ascpp", "-o-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "-o-18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "-o-18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o", "0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
+
+  args = {"ascpp", "-o", "18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "-o", "18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o", "-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "-o", "-18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "-o", "-18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "--opt", "18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "--opt", "18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "--opt", "-18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "--opt", "-18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "--opt=18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "--opt=18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+
+  args = {"ascpp", "--opt=-18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+
+  args = {"ascpp", "--opt=-18446744073709551616"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 }
 
 /*

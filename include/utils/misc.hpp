@@ -46,36 +46,38 @@ inline auto DebugGraphAnsiString(std::string_view str) -> std::string {
 
 namespace detail {
 
-inline auto GetStrAndBase(std::string_view str) -> std::pair<std::string_view, int> {
-  auto int_str = std::string_view();
+inline auto GetStrAndBase(std::string_view str) -> std::pair<std::string, int> {
+  auto int_str = ""s;
   auto base = 10;
+
+  if (str.starts_with("-") || str.starts_with("+")) {
+    int_str += str[0];
+    str.remove_prefix(1);
+  }
 
   if (str.starts_with("0b") || str.starts_with("0B")) {
     if (str.size() <= 2) {
       throw std::invalid_argument("");
     }
-    int_str = str.substr(2);
+    int_str += str.substr(2);
     base = 2;
   } else if (str.starts_with("0o") || str.starts_with("0O")) {
     if (str.size() <= 2) {
       throw std::invalid_argument("");
     }
-    int_str = str.substr(2);
+    int_str += str.substr(2);
     base = 8;
   } else if (str.starts_with("0x") || str.starts_with("0X")) {
     if (str.size() <= 2) {
       throw std::invalid_argument("");
     }
-    int_str = str.substr(2);
+    int_str += str.substr(2);
     base = 16;
   } else if (str.starts_with("0")) {
-    if (str.size() <= 1) {
-      throw std::invalid_argument("");
-    }
-    int_str = str.substr(1);
+    int_str += str;
     base = 8;
   } else {
-    int_str = str;
+    int_str += str;
     base = 10;
   }
   return {int_str, base};
@@ -98,7 +100,7 @@ inline auto Stoull(std::string_view str) -> unsigned long long {
   auto [int_str, base] = detail::GetStrAndBase(str);
   auto ret = 0;
   auto idx = 0ULL;
-  ret = std::stoull(std::string(int_str), &idx, base);
+  ret = std::stoull(int_str, &idx, base);
   if (idx != int_str.size()) {
     throw std::invalid_argument("");
   }
