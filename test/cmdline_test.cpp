@@ -1,8 +1,12 @@
 #include "utils/cmdline.hpp"
+#include <float.h>
+#include <vcruntime.h>
 
 #include <any>
+#include <cmath>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <ostream>
 #include <string>
 #include <unordered_set>
@@ -100,9 +104,9 @@ TEST(TestCmdline, AddSingleOptions) {
   EXPECT_ANY_THROW(limit_pred_adder.WithDefault(-1));
   EXPECT_ANY_THROW(limit_pred_adder.WithImplicit(0));
   limit_pred_adder.WithDefault(1);
-  EXPECT_FLOAT_EQ(std::any_cast<float>(flt.default_value), 1);
+  EXPECT_EQ(std::any_cast<float>(flt.default_value), 1);
   limit_pred_adder.WithImplicit(2);
-  EXPECT_FLOAT_EQ(std::any_cast<float>(flt.implicit_value), 2);
+  EXPECT_EQ(std::any_cast<float>(flt.implicit_value), 2);
 
   cmd.AddOption<double>("double", "double desc").WithDefault(1.5);
   auto& dbl = cmd.GetOption("double");
@@ -224,26 +228,224 @@ TEST(TestCmdline, AddMultiOptions) {
 TEST(TestCmdline, AddBadOptions) {
   auto cmd = ascpp::Cmdline{&app_info};
 
-  EXPECT_ANY_THROW(cmd.AddOption<bool>('\0', "zero", ""));
-  EXPECT_ANY_THROW(cmd.AddOption<bool>('\t', "tab", ""));
-  EXPECT_ANY_THROW(cmd.AddOption<bool>('\n', "newline", ""));
-  EXPECT_ANY_THROW(cmd.AddOption<bool>(' ', "space", ""));
-  cmd.AddOption<bool>('=', "punct", "");
-  EXPECT_EQ(cmd.GetOption('=').short_opt, "=");
-  EXPECT_EQ(cmd.GetOption('=').long_opt, "punct");
+  cmd.AddOption<bool>('o', "option", "normal option");
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("option", "duplicate long option name"));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('o', "longoption", "duplicate short option name"));
 
-  EXPECT_ANY_THROW(cmd.AddOption<bool>("1", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\0', "zero", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\n', "newline", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('\t', "tab", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>(' ', "space", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>('-', "hyphen", ""));
+  cmd.AddOption<bool>('=', "equal", "allowed = in short option");
+  EXPECT_EQ(cmd.GetOption('=').short_opt, "=");
+  EXPECT_EQ(cmd.GetOption('=').long_opt, "equal");
+
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("1", "too short, at least two char"));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("with\nnewline", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("with\ttab", ""));
   EXPECT_ANY_THROW(cmd.AddOption<bool>("with space", ""));
   EXPECT_ANY_THROW(cmd.AddOption<bool>("with=", ""));
   EXPECT_ANY_THROW(cmd.AddOption<bool>("=with", ""));
-  EXPECT_ANY_THROW(cmd.AddOption<bool>("选项", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("wi=th", ""));
+  EXPECT_ANY_THROW(cmd.AddOption<bool>("中文选项", ""));
+  cmd.AddOption<bool>("-hyphen", "allowed - in long option");
+  EXPECT_EQ(cmd.GetOption("-hyphen").short_opt, "");
+  EXPECT_EQ(cmd.GetOption("-hyphen").long_opt, "-hyphen");
+  cmd.AddOption<bool>("hyphen-", "allowed - in long option");
+  EXPECT_EQ(cmd.GetOption("hyphen-").short_opt, "");
+  EXPECT_EQ(cmd.GetOption("hyphen-").long_opt, "hyphen-");
+  cmd.AddOption<bool>("hy-phen", "allowed - in long option");
+  EXPECT_EQ(cmd.GetOption("hy-phen").short_opt, "");
+  EXPECT_EQ(cmd.GetOption("hy-phen").long_opt, "hy-phen");
 }
 
-TEST(TestCmdline, BoolBasic) {
-  auto cmd = ascpp::Cmdline{&app_info};
+TEST(TestCmdline, BasicParse) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<bool>('n', "non", "bool short option requires no value");
+  cmd.AddOption<std::string>('o', "optional",
+                             "short option with implicit value optional need a value")
+      .WithDefault("default")
+      .WithImplicit("implicit");
+  cmd.AddOption<std::string>('r', "required",
+                             "short option without implicit value requires a value")
+      .WithDefault("default");
+  cmd.AllowNonOptions("nonopts", false);
+
+  args = {"ascpp"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), false);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "default");
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "default");
+
+  args = {"ascpp", "-VALUE"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-n"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+
+  args = {"ascpp", "-nVALUE"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-n", "VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"VALUE"});
+
+  args = {"ascpp", "-o"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+
+  args = {"ascpp", "-oVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "VALUE");
+
+  args = {"ascpp", "-o", "VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"VALUE"});
+
+  args = {"ascpp", "-r"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-rVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "VALUE");
+
+  args = {"ascpp", "-r", "-n"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "-n");
+
+  args = {"ascpp", "-r", "--non"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "--non");
+
+  args = {"ascpp", "-noVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "VALUE");
+
+  args = {"ascpp", "-no", "VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"VALUE"});
+
+  args = {"ascpp", "-nrVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "VALUE");
+
+  args = {"ascpp", "-nr", "-VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "-VALUE");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{});
+
+  args = {"ascpp", "-norVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "rVALUE");
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "default");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{});
+
+  args = {"ascpp", "-nor", "VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "r");
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "default");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"VALUE"});
+
+  args = {"ascpp", "-nroVALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "oVALUE");
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "default");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{});
+
+  args = {"ascpp", "-nro", "VALUE"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "default");
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "o");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"VALUE"});
+
+  args = {"ascpp", "--non"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+
+  args = {"ascpp", "--non="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), false);
+
+  args = {"ascpp", "--non=false"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), false);
+
+  args = {"ascpp", "--non", "true"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("n"), true);
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"true"});
+
+  args = {"ascpp", "--optional"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+
+  args = {"ascpp", "--optional="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "");
+
+  args = {"ascpp", "--optional=false"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "false");
+
+  args = {"ascpp", "--optional", "true"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+  EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"true"});
+
+  args = {"ascpp", "--required"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--required="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "");
+
+  args = {"ascpp", "--required==false"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "=false");
+
+  args = {"ascpp", "--required", "--non"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "--non");
+
+  args = {"ascpp", "--required", "-n"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "-n");
+
+  args = {"ascpp", "0",         "-r", "true", "1",     "-o",      "2",
+          "--",    "all after", "--", "are",  "--non", "-option", "arguments"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("r"), "true");
+  EXPECT_EQ(cmd.GetValue<std::string>("o"), "implicit");
+  EXPECT_EQ(cmd.GetValue<bool>("n"), false);
+  auto nonoptions = std::vector<std::string>{"0",   "1",     "2",       "all after", "--",
+                                             "are", "--non", "-option", "arguments"};
+  EXPECT_EQ(cmd.GetNonOptions(), nonoptions);
+
+  std::clog << cmd.HelpString() << std::endl;
+}
+
+TEST(TestCmdline, BoolOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
   auto args = std::vector<const char*>();
 
   cmd.AddOption<bool>('o', "opt", "bool option");
+  cmd.AllowNonOptions("nonopts", false);
+
   args = {"ascpp"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
@@ -251,10 +453,6 @@ TEST(TestCmdline, BoolBasic) {
   args = {"ascpp", "-o"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
-
-  // bool short option requires no value
-  args = {"ascpp", "-ofalse"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
   args = {"ascpp", "-o", "false"};
   cmd.ParseArgs(args.size(), args.data());
@@ -269,6 +467,10 @@ TEST(TestCmdline, BoolBasic) {
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<bool>("opt"), true);
   EXPECT_EQ(cmd.GetNonOptions(), std::vector<std::string>{"false"});
+
+  args = {"ascpp", "--opt="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<bool>("opt"), false);
 
   args = {"ascpp", "--opt=true"};
   cmd.ParseArgs(args.size(), args.data());
@@ -312,8 +514,8 @@ TEST(TestCmdline, BoolBasic) {
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 }
 
-TEST(TestCmdline, IntBasic) {
-  auto cmd = ascpp::Cmdline{&app_info};
+TEST(TestCmdline, IntOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
   auto args = std::vector<const char*>();
 
   cmd.AddOption<int>('o', "opt", "int option");
@@ -323,41 +525,13 @@ TEST(TestCmdline, IntBasic) {
   args = {"ascpp", "-o"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "-o0"};
+  args = {"ascpp", "-o1"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
 
-  args = {"ascpp", "-o2147483647"};
+  args = {"ascpp", "-o", "1"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
-
-  args = {"ascpp", "-o2147483648"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "-o-2147483648"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
-
-  args = {"ascpp", "-o-2147483649"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "-o", "0"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
-
-  args = {"ascpp", "-o", "2147483647"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
-
-  args = {"ascpp", "-o", "2147483648"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "-o", "-2147483648"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
-
-  args = {"ascpp", "-o", "-2147483649"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
 
   args = {"ascpp", "--opt"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
@@ -366,41 +540,76 @@ TEST(TestCmdline, IntBasic) {
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
 
-  args = {"ascpp", "--opt", "2147483647"};
+  args = {"ascpp", "--opt="};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
 
-  args = {"ascpp", "--opt", "2147483648"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "--opt", "-2147483648"};
+  args = {"ascpp", "--opt=0b10"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 2);
 
-  args = {"ascpp", "--opt", "-2147483649"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "--opt=1"};
+  args = {"ascpp", "--opt=0B10"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), 1);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 2);
 
-  args = {"ascpp", "--opt=2147483647"};
+  args = {"ascpp", "--opt=0o10"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MAX);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 8);
 
-  args = {"ascpp", "--opt=2147483648"};
+  args = {"ascpp", "--opt=0O10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 8);
+
+  args = {"ascpp", "--opt=010"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 8);
+
+  args = {"ascpp", "--opt=0x10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 16);
+
+  args = {"ascpp", "--opt=0x10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 16);
+
+  args = {"ascpp", "--opt=0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
+
+  args = {"ascpp", "--opt=+0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
+
+  args = {"ascpp", "--opt=-0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), 0);
+
+  args = {"ascpp", "--opt=+2147483647"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("opt"), std::numeric_limits<int>::max());
+
+  args = {"ascpp", "--opt=+2147483648"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
   args = {"ascpp", "--opt=-2147483648"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<int>("opt"), INT32_MIN);
+  EXPECT_EQ(cmd.GetValue<int>("opt"), std::numeric_limits<int>::min());
 
   args = {"ascpp", "--opt=-2147483649"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=not-number"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=12not-number"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=not-number12"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 }
 
-TEST(TestCmdline, SizeBasic) {
-  auto cmd = ascpp::Cmdline{&app_info};
+TEST(TestCmdline, SizeOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
   auto args = std::vector<const char*>();
 
   cmd.AddOption<size_t>('o', "opt", "size_t option");
@@ -410,50 +619,13 @@ TEST(TestCmdline, SizeBasic) {
   args = {"ascpp", "-o"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "-o0"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
-
-  args = {"ascpp", "-o18446744073709551615"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
-
-  args = {"ascpp", "-o18446744073709551616"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  // unsigned integer wraparound rules
-  args = {"ascpp", "-o-1"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
-
-  args = {"ascpp", "-o-18446744073709551615"};
+  args = {"ascpp", "-o1"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
 
-  args = {"ascpp", "-o-18446744073709551616"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "-o", "0"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
-
-  args = {"ascpp", "-o", "18446744073709551615"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
-
-  args = {"ascpp", "-o", "18446744073709551616"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
-
-  args = {"ascpp", "-o", "-1"};
-  cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
-
-  args = {"ascpp", "-o", "-18446744073709551615"};
+  args = {"ascpp", "-o", "1"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
-
-  args = {"ascpp", "-o", "-18446744073709551616"};
-  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
   args = {"ascpp", "--opt"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
@@ -462,530 +634,420 @@ TEST(TestCmdline, SizeBasic) {
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
 
-  args = {"ascpp", "--opt", "18446744073709551615"};
+  args = {"ascpp", "--opt="};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
 
-  args = {"ascpp", "--opt", "18446744073709551616"};
+  args = {"ascpp", "--opt=0b10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 2);
+
+  args = {"ascpp", "--opt=0B10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 2);
+
+  args = {"ascpp", "--opt=0o10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 8);
+
+  args = {"ascpp", "--opt=0O10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 8);
+
+  args = {"ascpp", "--opt=010"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 8);
+
+  args = {"ascpp", "--opt=0x10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 16);
+
+  args = {"ascpp", "--opt=0x10"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 16);
+
+  args = {"ascpp", "--opt=0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
+
+  args = {"ascpp", "--opt=+0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
+
+  args = {"ascpp", "--opt=-0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 0);
+
+  args = {"ascpp", "-o18446744073709551615"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), std::numeric_limits<size_t>::max());
+
+  args = {"ascpp", "-o18446744073709551616"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "--opt", "-1"};
+  // unsigned integer wraparound rules
+  args = {"ascpp", "-o-1"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+  EXPECT_EQ(cmd.GetValue<size_t>("opt"), std::numeric_limits<size_t>::max());
 
-  args = {"ascpp", "--opt", "-18446744073709551615"};
+  args = {"ascpp", "-o-18446744073709551615"};
   cmd.ParseArgs(args.size(), args.data());
   EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
 
-  args = {"ascpp", "--opt", "-18446744073709551616"};
+  args = {"ascpp", "-o-18446744073709551616"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=non-int"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=12non-int"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=non-int12"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+}
+
+TEST(TestCmdline, FloatOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<float>('o', "opt", "float option");
+  args = {"ascpp"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5);
+
+  args = {"ascpp", "-o", "0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5);
+
+  args = {"ascpp", "--opt"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5);
+
+  args = {"ascpp", "--opt="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0);
 
   args = {"ascpp", "--opt=1"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 1);
 
-  args = {"ascpp", "--opt=18446744073709551615"};
+  args = {"ascpp", "--opt=0."};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.);
 
-  args = {"ascpp", "--opt=18446744073709551616"};
+  args = {"ascpp", "--opt=.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), .5);
+
+  args = {"ascpp", "--opt=0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5);
+
+  args = {"ascpp", "--opt=1e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 1e1);
+
+  args = {"ascpp", "--opt=0.e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.e1);
+
+  args = {"ascpp", "--opt=.5e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), .5e1);
+
+  args = {"ascpp", "--opt=0.5e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5e1);
+
+  args = {"ascpp", "--opt=1e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 1e+1);
+
+  args = {"ascpp", "--opt=0.e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.e+1);
+
+  args = {"ascpp", "--opt=.5e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), .5e+1);
+
+  args = {"ascpp", "--opt=0.5e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5e+1);
+
+  args = {"ascpp", "--opt=1e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 1e-1);
+
+  args = {"ascpp", "--opt=0.e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.e-1);
+
+  args = {"ascpp", "--opt=.5e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), .5e-1);
+
+  args = {"ascpp", "--opt=0.5e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_FLOAT_EQ(cmd.GetValue<float>("opt"), 0.5e-1);
+
+  args = {"ascpp", "--opt=3.402823466e+38"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<float>("opt"), std::numeric_limits<float>::max());
+
+  args = {"ascpp", "--opt=-3.402823466e+38"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<float>("opt"), std::numeric_limits<float>::lowest());
+
+  args = {"ascpp", "--opt=1.175494351e-38"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<float>("opt"), std::numeric_limits<float>::min());
+
+  args = {"ascpp", "--opt=3.402823466e+39"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=-3.402823466e+39"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=1.175494351e-50"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  args = {"ascpp", "--opt=-1"};
+  args = {"ascpp", "--opt=0.0"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), UINT64_MAX);
+  EXPECT_EQ(cmd.GetValue<float>("opt"), 0.0);
 
-  args = {"ascpp", "--opt=-18446744073709551615"};
+  args = {"ascpp", "--opt=+0.0"};
   cmd.ParseArgs(args.size(), args.data());
-  EXPECT_EQ(cmd.GetValue<size_t>("opt"), 1);
+  EXPECT_EQ(cmd.GetValue<float>("opt"), 0.0);
 
-  args = {"ascpp", "--opt=-18446744073709551616"};
+  args = {"ascpp", "--opt=-0.0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<float>("opt"), 0.0);
+
+  args = {"ascpp", "--opt=NAN"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isnan(cmd.GetValue<float>("opt")));
+
+  args = {"ascpp", "--opt=+inf"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isinf(cmd.GetValue<float>("opt")));
+  EXPECT_EQ(cmd.GetValue<float>("opt"), std::numeric_limits<float>::infinity());
+
+  args = {"ascpp", "--opt=-inf"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isinf(cmd.GetValue<float>("opt")));
+  EXPECT_EQ(cmd.GetValue<float>("opt"), -std::numeric_limits<float>::infinity());
+}
+
+TEST(TestCmdline, DoubleOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
+
+  cmd.AddOption<double>('o', "opt", "double option");
+  args = {"ascpp"};
   EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "-o0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5);
+
+  args = {"ascpp", "-o", "0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5);
+
+  args = {"ascpp", "--opt"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt", "0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5);
+
+  args = {"ascpp", "--opt="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0);
+
+  args = {"ascpp", "--opt=1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 1);
+
+  args = {"ascpp", "--opt=0."};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.);
+
+  args = {"ascpp", "--opt=.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), .5);
+
+  args = {"ascpp", "--opt=0.5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5);
+
+  args = {"ascpp", "--opt=1e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 1e1);
+
+  args = {"ascpp", "--opt=0.e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.e1);
+
+  args = {"ascpp", "--opt=.5e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), .5e1);
+
+  args = {"ascpp", "--opt=0.5e1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5e1);
+
+  args = {"ascpp", "--opt=1e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 1e+1);
+
+  args = {"ascpp", "--opt=0.e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.e+1);
+
+  args = {"ascpp", "--opt=.5e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), .5e+1);
+
+  args = {"ascpp", "--opt=0.5e+1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5e+1);
+
+  args = {"ascpp", "--opt=1e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 1e-1);
+
+  args = {"ascpp", "--opt=0.e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.e-1);
+
+  args = {"ascpp", "--opt=.5e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), .5e-1);
+
+  args = {"ascpp", "--opt=0.5e-1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_DOUBLE_EQ(cmd.GetValue<double>("opt"), 0.5e-1);
+
+  args = {"ascpp", "--opt=+1.7976931348623158e+308"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), std::numeric_limits<double>::max());
+
+  args = {"ascpp", "--opt=-1.7976931348623158e+308"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), std::numeric_limits<double>::lowest());
+
+  args = {"ascpp", "--opt=2.2250738585072014e-308"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), std::numeric_limits<double>::min());
+
+  args = {"ascpp", "--opt=+1.7976931348623159e+308"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=+1.7976931348623158e+309"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=-1.7976931348623159e+308"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=-1.7976931348623158e+309"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "--opt=2.2250738585072013e-400"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  args = {"ascpp", "--opt=0.0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), 0.0);
+
+  args = {"ascpp", "--opt=+0.0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), 0.0);
+
+  args = {"ascpp", "--opt=-0.0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<double>("opt"), 0.0);
+
+  args = {"ascpp", "--opt=NAN"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isnan(cmd.GetValue<double>("opt")));
+
+  args = {"ascpp", "--opt=+inf"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isinf(cmd.GetValue<double>("opt")));
+  EXPECT_EQ(cmd.GetValue<double>("opt"), std::numeric_limits<double>::infinity());
+
+  args = {"ascpp", "--opt=-inf"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_TRUE(std::isinf(cmd.GetValue<double>("opt")));
+  EXPECT_EQ(cmd.GetValue<double>("opt"), -std::numeric_limits<double>::infinity());
 }
 
-/*
-TEST(TestCmdline, BasicUsage) {
-  auto cmdline = ascpp::Cmdline(&app_info);
-  cmdline.AddOption<std::string>('s', "str", "");
-  auto argv = std::vector<const char*>();
-  auto unmatched = std::vector<std::string>();
+TEST(TestCmdline, StringOption) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
 
-  argv = {"ascpp", "-shello"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
+  cmd.AddOption<std::string>('o', "opt", "string option");
 
-  argv = {"ascpp", "-s", "hello"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
+  args = {"ascpp"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  argv = {"ascpp", "--str=hello"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
+  args = {"ascpp", "-o"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
 
-  argv = {"ascpp", "--str=hello", "world"};
-  unmatched = {"world"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
+  args = {"ascpp", "-ostring"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("opt"), "string");
 
-  argv = {"ascpp", "--str=hello", "my", "--str=world"};
-  unmatched = {"my"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
-  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
+  args = {"ascpp", "-o", "string"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("opt"), "string");
 
-  argv = {"ascpp", "--str=hello", "--", "--str=world"};
-  unmatched = {"--str=world"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline.GetUnmatchedArgs(), unmatched);
+  args = {"ascpp", "--opt", "string"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("opt"), "string");
+
+  args = {"ascpp", "--opt=string"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("opt"), "string");
+
+  args = {"ascpp", "--opt="};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<std::string>("opt"), "");
 }
 
-TEST(TestCmdline, AddBoolOption) {
-  auto cmdline = ascpp::Cmdline{&app_info};
-  cmdline.AddOption<bool>('b', "short_b", "");
-  cmdline.AddOption<bool>("bool", "");
-  auto cmdline_default = ascpp::Cmdline{&app_info};
-  cmdline_default.AddOptionWithDefault<bool>('b', "short_b", "", true);
-  cmdline_default.AddOptionWithDefault<bool>("bool", "", true);
-  auto cmdline_implicit = ascpp::Cmdline{&app_info};
-  cmdline_implicit.AddOptionWithImplicit<bool>('b', "short_b", "", false);
-  cmdline_implicit.AddOptionWithImplicit<bool>("bool", "", false);
-  auto cmdline_both = ascpp::Cmdline{&app_info};
-  cmdline_both.AddOptionWithBoth<bool>('b', "short_b", "", true, false);
-  cmdline_both.AddOptionWithBoth<bool>("bool", "", true, false);
-  auto argv = std::vector<const char*>();
+TEST(TestCmdline, MultiOpt) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
 
-  // bool has default default_value: false
-  argv = {"ascpp"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("b"), false);
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("short_b"), false);
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
+  cmd.AddOption<std::vector<bool>>('b', "bool", "bool option");
+  cmd.AddOption<std::vector<int>>('i', "int", "int option");
+  cmd.AddOption<std::vector<size_t>>('z', "size_t", "size_t option");
+  cmd.AddOption<std::vector<float>>('f', "float", "float option");
+  cmd.AddOption<std::vector<double>>('d', "double", "double option");
+  cmd.AddOption<std::vector<std::string>>('s', "string", "string option");
 
-  // set default_value to true
-  argv = {"ascpp"};
-  cmdline_default.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("b"), true);
-  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("short_b"), true);
-  EXPECT_EQ(cmdline_default.GetOptionValue<bool>("bool"), true);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("b"), true);
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("short_b"), true);
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("bool"), true);
-
-  // bool has default implicit_value: true
-  argv = {"ascpp", "-b"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("b"), true);
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("short_b"), true);
-  argv = {"ascpp", "--bool"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
-
-  // set implicit_value to false
-  argv = {"ascpp", "-b"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("b"), false);
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("short_b"), false);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("b"), false);
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("short_b"), false);
-  argv = {"ascpp", "--bool"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<bool>("bool"), false);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<bool>("bool"), false);
-
-  // unable to set the value of short options that has implicit_value
-  argv = {"ascpp", "-btrue"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-bfalse"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-b", "true"};
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
-  argv = {"ascpp", "-b", "false"};
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
-
-  // set the value of the long option
-  argv = {"ascpp", "--bool=true"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
-  argv = {"ascpp", "--bool=1"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), true);
-  argv = {"ascpp", "--bool=false"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
-  argv = {"ascpp", "--bool=0"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<bool>("bool"), false);
+  args = {"ascpp", "-b1", "-i1,", "-z,", "-f,1", "-d1,,", "-s,,1"};
+  cmd.ParseArgs(args.size(), args.data());
+  auto vb = std::vector<bool>{true};
+  EXPECT_EQ(cmd.GetValue<std::vector<bool>>("b"), vb);
+  auto vi = std::vector<int>{1};
+  EXPECT_EQ(cmd.GetValue<std::vector<int>>("i"), vi);
+  auto vz = std::vector<size_t>{0};
+  EXPECT_EQ(cmd.GetValue<std::vector<size_t>>("z"), vz);
+  auto vf = std::vector<float>{0, 1};
+  EXPECT_EQ(cmd.GetValue<std::vector<float>>("f"), vf);
+  auto vd = std::vector<double>{1, 0};
+  EXPECT_EQ(cmd.GetValue<std::vector<double>>("d"), vd);
+  auto vs = std::vector<std::string>{"", "", "1"};
+  EXPECT_EQ(cmd.GetValue<std::vector<std::string>>("s"), vs);
 }
 
-TEST(TestCmdline, AddIntOption) {
-  auto cmdline = ascpp::Cmdline(&app_info);
-  cmdline.AddOption<int>('i', "short_i", "");
-  cmdline.AddOption<int>("int", "");
-  auto cmdline_default = ascpp::Cmdline(&app_info);
-  cmdline_default.AddOptionWithDefault<int>('i', "short_i", "", 11);
-  cmdline_default.AddOptionWithDefault<int>("int", "", 11);
-  auto cmdline_implicit = ascpp::Cmdline(&app_info);
-  cmdline_implicit.AddOptionWithImplicit<int>('i', "short_i", "", 11);
-  cmdline_implicit.AddOptionWithImplicit<int>("int", "", 11);
-  auto cmdline_both = ascpp::Cmdline(&app_info);
-  cmdline_both.AddOptionWithBoth<int>('i', "short_i", "", 11, 11);
-  cmdline_both.AddOptionWithBoth<int>("int", "", 11, 11);
-  auto argv = std::vector<const char*>();
-
-  // without default_value
-  argv = {"ascpp"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("i"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("short_i"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<int>("int"));
-
-  // with default_value 11
-  argv = {"ascpp"};
-  cmdline_default.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetOptionValue<int>("i"), 11);
-  EXPECT_EQ(cmdline_default.GetOptionValue<int>("short_i"), 11);
-  EXPECT_EQ(cmdline_default.GetOptionValue<int>("int"), 11);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("i"), 11);
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("short_i"), 11);
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("int"), 11);
-
-  // without implicit_value
-  argv = {"ascpp", "-i"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "--int"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-
-  // with implicit_value 11
-  argv = {"ascpp", "-i"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("i"), 11);
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("short_i"), 11);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("i"), 11);
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("short_i"), 11);
-  argv = {"ascpp", "--int"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("int"), 11);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<int>("int"), 11);
-
-  // set the value of short option without implicit value
-  argv = {"ascpp", "-i22"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<int>("i"), 22);
-  EXPECT_EQ(cmdline.GetOptionValue<int>("short_i"), 22);
-  argv = {"ascpp", "-i", "22"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<int>("i"), 22);
-  EXPECT_EQ(cmdline.GetOptionValue<int>("short_i"), 22);
-
-  // unable to set the value of short option that has implicit_value
-  argv = {"ascpp", "-i22"};
-  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-i", "22"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("i"), 11);
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<int>("short_i"), 11);
-
-  // set the argument of the long option
-  argv = {"ascpp", "--int=22"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<int>("int"), 22);
-
-  argv = {"ascpp", "--int=nan"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-}
-
-TEST(TestCmdline, AddFloatOption) {
-  auto cmdline = ascpp::Cmdline(&app_info);
-  cmdline.AddOption<float>('f', "short_f", "");
-  cmdline.AddOption<float>("float", "");
-  auto cmdline_default = ascpp::Cmdline(&app_info);
-  cmdline_default.AddOptionWithDefault<float>('f', "short_f", "", 1.1);
-  cmdline_default.AddOptionWithDefault<float>("float", "", 1.1);
-  auto cmdline_implicit = ascpp::Cmdline(&app_info);
-  cmdline_implicit.AddOptionWithImplicit<float>('f', "short_f", "", 1.1);
-  cmdline_implicit.AddOptionWithImplicit<float>("float", "", 1.1);
-  auto cmdline_both = ascpp::Cmdline(&app_info);
-  cmdline_both.AddOptionWithBoth<float>('f', "short_f", "", 1.1, 1.1);
-  cmdline_both.AddOptionWithBoth<float>("float", "", 1.1, 1.1);
-  auto argv = std::vector<const char*>();
-
-  // without default_value
-  argv = {"ascpp"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("f"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("short_f"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<float>("float"));
-
-  // with default_value 1.1
-  argv = {"ascpp"};
-  cmdline_default.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("short_f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_default.GetOptionValue<float>("float"), 1.1);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("short_f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("float"), 1.1);
-
-  // without implicit_value
-  argv = {"ascpp", "-f"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "--float"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-
-  // with implicit_value 1.1
-  argv = {"ascpp", "-f"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("short_f"), 1.1);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("short_f"), 1.1);
-  argv = {"ascpp", "--float"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("float"), 1.1);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_both.GetOptionValue<float>("float"), 1.1);
-
-  // set the value of short option without implicit value
-  argv = {"ascpp", "-f2.2"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("f"), 2.2);
-  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("short_f"), 2.2);
-  argv = {"ascpp", "-f", "2.2"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("f"), 2.2);
-  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("short_f"), 2.2);
-
-  // unable to set the value of short option that has implicit_value
-  argv = {"ascpp", "-f2.2"};
-  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-f", "2.2"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("f"), 1.1);
-  EXPECT_FLOAT_EQ(cmdline_implicit.GetOptionValue<float>("short_f"), 1.1);
-
-  // set the argument of the long option
-  argv = {"ascpp", "--float=2.2"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_FLOAT_EQ(cmdline.GetOptionValue<float>("float"), 2.2);
-}
-
-TEST(TestCmdline, AddStringOption) {
-  auto cmdline = ascpp::Cmdline(&app_info);
-  cmdline.AddOption<std::string>('s', "short_s", "");
-  cmdline.AddOption<std::string>("string", "");
-  auto cmdline_default = ascpp::Cmdline(&app_info);
-  cmdline_default.AddOptionWithDefault<std::string>('s', "short_s", "", "hello");
-  cmdline_default.AddOptionWithDefault<std::string>("string", "", "hello");
-  auto cmdline_implicit = ascpp::Cmdline(&app_info);
-  cmdline_implicit.AddOptionWithImplicit<std::string>('s', "short_s", "", "hello");
-  cmdline_implicit.AddOptionWithImplicit<std::string>("string", "", "hello");
-  auto cmdline_both = ascpp::Cmdline(&app_info);
-  cmdline_both.AddOptionWithBoth<std::string>('s', "short_s", "", "hello", "hello");
-  cmdline_both.AddOptionWithBoth<std::string>("string", "", "hello", "hello");
-  auto argv = std::vector<const char*>();
-
-  // without default_value
-  argv = {"ascpp"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("s"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("short_s"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::string>("string"));
-
-  // with default_value "hello"
-  argv = {"ascpp"};
-  cmdline_default.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("short_s"), "hello");
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::string>("string"), "hello");
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("short_s"), "hello");
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("string"), "hello");
-
-  // without implicit_value
-  argv = {"ascpp", "-s"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "--string"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-
-  // with implicit_value "hello"
-  argv = {"ascpp", "-s"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("short_s"), "hello");
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("short_s"), "hello");
-  argv = {"ascpp", "--string"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("string"), "hello");
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::string>("string"), "hello");
-
-  // set the value of short option without implicit value
-  argv = {"ascpp", "-sworld"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("short_s"), "world");
-  argv = {"ascpp", "-s", "world"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("s"), "world");
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("short_s"), "world");
-
-  // unable to set the value of short option that has implicit_value
-  argv = {"ascpp", "-sworld"};
-  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-s", "world"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("s"), "hello");
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::string>("short_s"), "hello");
-
-  // set the argument of the long option
-  argv = {"ascpp", "--string=world"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::string>("string"), "world");
-}
-
-TEST(TestCmdline, AddVectorOption) {
-  auto cmdline = ascpp::Cmdline(&app_info);
-  cmdline.AddOption<std::vector<std::string>>('V', "short_v", "");
-  cmdline.AddOption<std::vector<std::string>>("vector", "");
-  auto cmdline_default = ascpp::Cmdline(&app_info);
-  cmdline_default.AddOptionWithDefault<std::vector<std::string>>('V', "short_v", "",
-                                                                 {"a", "b", "c"});
-  cmdline_default.AddOptionWithDefault<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  auto cmdline_implicit = ascpp::Cmdline(&app_info);
-  cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>('V', "short_v", "",
-                                                                   {"a", "b", "c"});
-  cmdline_implicit.AddOptionWithImplicit<std::vector<std::string>>("vector", "", {"a", "b", "c"});
-  auto cmdline_both = ascpp::Cmdline(&app_info);
-  cmdline_both.AddOptionWithBoth<std::vector<std::string>>('V', "short_v", "", {"a", "b", "c"},
-                                                           {"a", "b", "c"});
-  cmdline_both.AddOptionWithBoth<std::vector<std::string>>("vector", "", {"a", "b", "c"},
-                                                           {"a", "b", "c"});
-  auto argv = std::vector<const char*>();
-  auto values = std::vector<std::string>{"a", "b", "c"};
-
-  // without default_value
-  argv = {"ascpp"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("V"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("short_v"));
-  EXPECT_ANY_THROW(cmdline.GetOptionValue<std::vector<std::string>>("vector"));
-
-  // with default_value {"a","b","c"}
-  argv = {"ascpp"};
-  cmdline_default.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("short_v"), values);
-  EXPECT_EQ(cmdline_default.GetOptionValue<std::vector<std::string>>("vector"), values);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("short_v"), values);
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("vector"), values);
-
-  // without implicit_value
-  argv = {"ascpp", "-V"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "--vector"};
-  EXPECT_ANY_THROW(cmdline.ParseArgs(argv.size(), argv.data()));
-
-  // with implicit_value {"a","b","c"}
-  argv = {"ascpp", "-V"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("short_v"), values);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("short_v"), values);
-  argv = {"ascpp", "--vector"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("vector"), values);
-  cmdline_both.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_both.GetOptionValue<std::vector<std::string>>("vector"), values);
-
-  // set the value of short option without implicit value
-  argv = {"ascpp", "-Va,b,c"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("short_v"), values);
-  argv = {"ascpp", "-V", "a,b,c"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("short_v"), values);
-
-  // unable to set the value of short option that has implicit_value
-  argv = {"ascpp", "-Vx,y,z"};
-  EXPECT_ANY_THROW(cmdline_implicit.ParseArgs(argv.size(), argv.data()));
-  argv = {"ascpp", "-V", "x,y,z"};
-  cmdline_implicit.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("V"), values);
-  EXPECT_EQ(cmdline_implicit.GetOptionValue<std::vector<std::string>>("short_v"), values);
-
-  // set the argument of the long option
-  argv = {"ascpp", "--vector=a,b,c"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
-  argv = {"ascpp", "--vector=a,b,c,"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
-  argv = {"ascpp", "--vector=a,b,c,,"};
-  cmdline.ParseArgs(argv.size(), argv.data());
-  values.emplace_back("");
-  EXPECT_EQ(cmdline.GetOptionValue<std::vector<std::string>>("vector"), values);
-}
-
-TEST(TestCmdline, AddPositionalOption) {
-  auto option = ascpp::Cmdline(&app_info);
-  auto argv = std::vector<const char*>();
-  auto value = std::vector<std::string>();
-  option.AddOption<bool>('o', "opt", "");
-  option.AddOption<std::string>("a", "", true);
-  option.AddOption<std::string>("b", "", true);
-  option.AddOption<std::vector<std::string>>("c", "", true);
-
-  argv = {"ascpp", "a", "b", "c"};
-  option.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
-  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
-  value = {"c"};
-  EXPECT_EQ(option.GetOptionValue<std::vector<std::string>>("c"), value);
-
-  argv = {"ascpp", "a", "b", "c", "d"};
-  option.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
-  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
-  value = {"c", "d"};
-  EXPECT_EQ(option.GetOptionValue<std::vector<std::string>>("c"), value);
-
-  // FIXME: should throw when there is no positional arguments for option c
-  argv = {"ascpp", "a", "b"};
-  // EXPECT_ANY_THROW(option.Parse(argv.size(), argv.data()));
-  option.ParseArgs(argv.size(), argv.data());
-  EXPECT_EQ(option.GetOptionValue<std::string>("a"), "a");
-  EXPECT_EQ(option.GetOptionValue<std::string>("b"), "b");
-  value = {};
-  EXPECT_ANY_THROW(option.GetOptionValue<std::vector<std::string>>("c"));
-}
-
-TEST(TestCmdline, HelpAndVersionOption) {
-  auto option = ascpp::Cmdline(&app_info);
-  auto argv = std::vector<const char*>();
-
-  // argv = {"ascpp", "--help"};
-  // option.Parse(argv.size(), argv.data());
-
-  // argv = {"ascpp", "--version"};
-  // option.Parse(argv.size(), argv.data());
-}
-*/

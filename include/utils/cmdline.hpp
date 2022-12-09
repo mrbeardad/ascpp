@@ -96,7 +96,6 @@ struct Option {
     if constexpr (std::is_same_v<T, std::vector<std::string>>) {
       return M_STRING;
     }
-    static_assert(true, "wrong type for option");
   }
 
   static inline auto MapTypeEnumToStr(OptType type) -> const char* {
@@ -264,6 +263,15 @@ class Cmdline {
     return opt_adder;
   }
 
+  auto AllowNonOptions(std::string name, bool is_required) -> void {
+    // empty nonopt_name_ means nonoptions are disallowed
+    if (name.empty()) {
+      throw std::logic_error("empty name for nonoptions is not allowed.");
+    }
+    nonopt_name_ = std::move(name);
+    is_nonopt_required_ = is_required;
+  }
+
   auto GetOption(const std::string& long_opt) -> const Option& {
     return options_.at(search_idx_.at(long_opt));
   }
@@ -273,7 +281,7 @@ class Cmdline {
   }
 
   auto HelpString() -> std::string {
-    auto opt_str = [](Option& opt) {
+    auto longopt_str = [](Option& opt) {
       auto ret = ""s;
       if (!opt.implicit_value.has_value()) {
         ret = fmt::format("--{}=<{}>", opt.long_opt, Option::MapTypeEnumToStr(opt.opt_type));
@@ -285,51 +293,71 @@ class Cmdline {
       return ret;
     };
 
-    auto ret = ""s;
-    ret += app_info_->AppName() + " " + app_info_->AppVersion() + "\n";
-    ret += app_info_->AppDescription() + "\n\n";
-
-    auto required_opts = std::vector<Option*>();
-    auto optional_opts = std::vector<Option*>();
-    for (auto& opt : options_) {
-      if (!opt.default_value.has_value()) {
-        required_opts.emplace_back(&opt);
+    auto ret
+        = fmt::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->AppName(),
+                      app_info_->AppVersion(), app_info_->AppDescription(), app_info_->AppName());
+    if (!nonopt_name_.empty()) {
+      ret += "[--] ";
+      if (is_nonopt_required_) {
+        ret += nonopt_name_;
       } else {
-        optional_opts.emplace_back(&opt);
+        ret += "[" + nonopt_name_ + "]";
       }
     }
-    ret += "USAGE:\n  " + app_info_->AppName() + " ";
-    for (auto opt : required_opts) {
-      ret += opt_str(*opt) + " ";
-    }
-    if (required_opts.size() == options_.size()) {
-      return ret;
-    }
+    ret += "\n\n";
 
-    ret += "\n\nOPTIONS:\n";
     auto max_width_of_opt_name_col = static_cast<size_t>(0);
-    auto opt_name_col = std::vector<std::string>();
-    auto opt_name_col_width = std::vector<size_t>();
-    auto opt_desc_col = std::vector<std::string>();
-    for (auto opt : optional_opts) {
+    auto required_opt_name_col = std::vector<std::string>();
+    auto required_opt_name_col_width = std::vector<size_t>();
+    auto required_opt_desc_col = std::vector<std::string*>();
+    auto optional_opt_name_col = std::vector<std::string>();
+    auto optional_opt_name_col_width = std::vector<size_t>();
+    auto optional_opt_desc_col = std::vector<std::string*>();
+
+    for (auto& opt : options_) {
+      auto opt_name_col = &required_opt_name_col;
+      auto opt_name_col_width = &required_opt_name_col_width;
+      auto opt_desc_col = &required_opt_desc_col;
+      if (opt.default_value.has_value()) {
+        opt_name_col = &optional_opt_name_col;
+        opt_name_col_width = &optional_opt_name_col_width;
+        opt_desc_col = &optional_opt_desc_col;
+      }
+
       auto opt_name = "  "s;
-      if (!opt->short_opt.empty()) {
-        opt_name += "-" + opt->short_opt + ", ";
+      if (!opt.short_opt.empty()) {
+        opt_name += "-" + opt.short_opt + ", ";
       } else {
         opt_name += "    ";
       }
-      opt_name += opt_str(*opt);
+      opt_name += longopt_str(opt);
+      opt_name_col->emplace_back(opt_name);
+
       auto width = fmt::detail::compute_width(opt_name);
-      opt_name_col_width.emplace_back(width);
       max_width_of_opt_name_col = std::max(max_width_of_opt_name_col, width);
-      opt_name_col.emplace_back(opt_name);
-      opt_desc_col.emplace_back(opt->opt_desc);
+      opt_name_col_width->emplace_back(width);
+
+      opt_desc_col->emplace_back(&opt.opt_desc);
     }
-    for (auto i = 0ULL; i < opt_name_col.size(); ++i) {
-      ret += opt_name_col[i] + std::string(max_width_of_opt_name_col - opt_name_col_width[i], ' ');
-      // TODO: option description wrap line
-      ret += "\t-- " + opt_desc_col[i] + "\n";
+
+    if (!required_opt_name_col.empty()) {
+      ret += "REQUIRED OPTIONS:\n";
+      for (auto i = 0UZ; i < required_opt_name_col.size(); ++i) {
+        ret += required_opt_name_col[i]
+               + std::string(max_width_of_opt_name_col - required_opt_name_col_width[i], ' ');
+        ret += "\t-- " + *required_opt_desc_col[i] + "\n";
+      }
+      ret += "\n";
     }
+    if (!optional_opt_name_col.empty()) {
+      ret += "OPTIONAL OPTIONS:\n";
+      for (auto i = 0UZ; i < optional_opt_desc_col.size(); ++i) {
+        ret += optional_opt_name_col[i]
+               + std::string(max_width_of_opt_name_col - optional_opt_name_col_width[i], ' ');
+        ret += "\t-- " + *optional_opt_desc_col[i] + "\n";
+      }
+    }
+
     return ret;
   }
 
@@ -354,17 +382,17 @@ class Cmdline {
         auto opt_name = this_arg.substr(2, es_pos - 2);
 
         if (search_idx_.find(opt_name) == search_idx_.end()) {
-          throw std::runtime_error("no option '" + opt_name + "'");
+          throw std::runtime_error(fmt::format("no option '{}'", opt_name));
         }
         if (opt_name.size() < 2) {
-          throw std::runtime_error("wrong form for short option: " + this_arg);
+          throw std::runtime_error(fmt::format("wrong form for short option '{}'", this_arg));
         }
 
         if (es_pos == std::string::npos) {
           // form: --option [value]
           if (!HasImplicitValue(opt_name)) {
             if (i + 1 >= argc) {
-              throw std::runtime_error("requires a value for option '" + opt_name + "'");
+              throw std::runtime_error(fmt::format("requires a value for option '{}'", opt_name));
             }
             SetValue(opt_name, argv[++i]);
           } else {
@@ -379,17 +407,17 @@ class Cmdline {
           }
         }
       } else if (this_arg.starts_with("-")) {
-        for (auto j = 1ULL; j < this_arg.size(); ++j) {
+        for (auto j = 1UZ; j < this_arg.size(); ++j) {
           auto cur_opt = std::string{this_arg[j]};
           auto opt_idx = search_idx_.find(cur_opt);
           if (opt_idx == search_idx_.end()) {
-            throw std::runtime_error("no option '" + cur_opt + "'");
+            throw std::runtime_error(fmt::format("no option '{}'", cur_opt));
           }
           if (!HasImplicitValue(cur_opt)) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt value
               if (i + 1 >= argc) {
-                throw std::runtime_error("requires a value for option '" + cur_opt + "'");
+                throw std::runtime_error(fmt::format("requires a value for option '{}'", cur_opt));
               }
               SetValue(cur_opt, argv[++i]);
             } else {
@@ -415,10 +443,17 @@ class Cmdline {
       }
     }
 
+    if (nonopt_name_.empty() && !nonoptions_.empty()) {
+      throw std::runtime_error("nonoption arguments are not allowed");
+    }
+    if (is_nonopt_required_ && nonoptions_.empty()) {
+      throw std::runtime_error("required nonoption arguments as " + nonopt_name_);
+    }
+
     for (auto& opt : options_) {
       if (!opt.result_value.has_value()) {
         if (!opt.default_value.has_value()) {
-          throw std::runtime_error("requires option '" + opt.long_opt + "'");
+          throw std::runtime_error(fmt::format("requires option '{}'", opt.long_opt));
         }
         opt.result_value = opt.default_value;
       }
@@ -449,20 +484,28 @@ class Cmdline {
   auto CheckShortOpt(char opt_name) const -> void {
     auto str_opt = std::string{opt_name};
     if (search_idx_.find(str_opt) != search_idx_.end()) {
-      throw std::logic_error("duplicate option '" + str_opt + "'");
+      throw std::logic_error(fmt::format("duplicate option '{}'", str_opt));
     }
-    if (auto debug = DebugGraphAnsiString(str_opt); debug != str_opt) {
-      throw std::logic_error("short option must be a graphical character: '" + debug + "'");
+    if (!std::isgraph(opt_name)) {
+      throw std::logic_error(fmt::format("short option name must be a graphical character: '{}'",
+                                         DebugGraphAnsiString(str_opt)));
+    }
+    if (opt_name == '-') {
+      throw std::logic_error("short option name could not be '-'");
     }
   }
 
   auto CheckLongOpt(const std::string& opt_name) const -> void {
     if (search_idx_.find(opt_name) != search_idx_.end()) {
-      throw std::logic_error("duplicate option '" + opt_name + "'");
+      throw std::logic_error(fmt::format("duplicate option '{}'", opt_name));
     }
-    if (auto debug = DebugGraphAnsiString(opt_name); debug != opt_name || opt_name.size() <= 2) {
-      throw std::logic_error("long option must be graphical and have at least 2 character: '"
-                             + debug + "'");
+    if (opt_name.size() <= 2) {
+      throw std::logic_error(
+          fmt::format("long option name requires at least 2 character: '{}'", opt_name));
+    }
+    if (auto debug = DebugGraphAnsiString(opt_name); debug != opt_name) {
+      throw std::logic_error(
+          fmt::format("characters in long option name must be graphical: '{}'", debug));
     }
     if (opt_name.find('=') != std::string::npos) {
       throw std::logic_error("long option name could not contain '='");
@@ -474,11 +517,6 @@ class Cmdline {
   }
 
   auto SetValue(const std::string& opt_name, std::string opt_value) -> void {
-    if (opt_value.empty()) {
-      SetValueWithImplicit(opt_name);
-      return;
-    }
-
     auto& opt = options_.at(search_idx_.at(opt_name));
 
     auto throw_when_invalid = [&opt_name, &opt_value, &opt]<typename T>(const T& value) {
@@ -502,10 +540,11 @@ class Cmdline {
       if (value == "yes" || value == "on" || value == "true" || value == "1") {
         return true;
       }
-      if (value == "no" || value == "off" || value == "false" || value == "0") {
+      if (value.empty() || value == "no" || value == "off" || value == "false" || value == "0") {
         return false;
       }
-      throw std::runtime_error("invalid value for bool option '" + opt_name + "': " + opt_value);
+      throw std::runtime_error(
+          fmt::format("invalid value for bool option '{}': {}", opt_name, opt_value));
     };
 
     try {
@@ -516,20 +555,21 @@ class Cmdline {
           break;
         }
         case Option::S_INT: {
-          auto value = Stoi(opt_value);
+          auto value = opt_value.empty() ? 0 : Stoi(opt_value);
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
         case Option::S_SIZE: {
-          auto value = static_cast<size_t>(Stoull(opt_value));
+          auto value
+              = opt_value.empty() ? static_cast<size_t>(0) : static_cast<size_t>(Stoull(opt_value));
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
         case Option::S_FLOAT: {
-          auto idx = 0ULL;
-          auto value = std::stof(opt_value, &idx);
+          auto idx = 0UZ;
+          auto value = opt_value.empty() ? 0.0F : std::stof(opt_value, &idx);
           if (idx != opt_value.size()) {
             throw std::invalid_argument("");
           }
@@ -538,8 +578,8 @@ class Cmdline {
           break;
         }
         case Option::S_DOUBLE: {
-          auto idx = 0ULL;
-          auto value = std::stod(opt_value, &idx);
+          auto idx = 0UZ;
+          auto value = opt_value.empty() ? 0.0 : std::stod(opt_value, &idx);
           if (idx != opt_value.size()) {
             throw std::invalid_argument("");
           }
@@ -564,7 +604,7 @@ class Cmdline {
         case Option::M_INT: {
           auto vec = std::vector<int>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = Stoi(std::string(word.begin(), word.end()));
+            auto value = opt_value.empty() ? 0 : Stoi({word.begin(), word.end()});
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -574,7 +614,8 @@ class Cmdline {
         case Option::M_SIZE: {
           auto vec = std::vector<size_t>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto value = Stoull(std::string(word.begin(), word.end()));
+            auto value
+                = opt_value.empty() ? static_cast<size_t>(0) : Stoull({word.begin(), word.end()});
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -584,8 +625,9 @@ class Cmdline {
         case Option::M_FLOAT: {
           auto vec = std::vector<float>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto idx = 0ULL;
-            auto value = std::stof(std::string(word.begin(), word.end()), &idx);
+            auto idx = 0UZ;
+            auto value
+                = opt_value.empty() ? 0.0F : std::stof(std::string(word.begin(), word.end()), &idx);
             if (idx != opt_value.size()) {
               throw std::invalid_argument("");
             }
@@ -598,8 +640,9 @@ class Cmdline {
         case Option::M_DOUBLE: {
           auto vec = std::vector<double>();
           for (auto word : std::views::split(opt_value, ",")) {
-            auto idx = 0ULL;
-            auto value = std::stod(std::string(word.begin(), word.end()), &idx);
+            auto idx = 0UZ;
+            auto value
+                = opt_value.empty() ? 0.0 : std::stod(std::string(word.begin(), word.end()), &idx);
             if (idx != opt_value.size()) {
               throw std::invalid_argument("");
             }
@@ -634,7 +677,7 @@ class Cmdline {
   auto SetValueWithImplicit(const std::string& opt_name) -> void {
     auto& opt = options_.at(search_idx_.at(opt_name));
     if (!opt.implicit_value.has_value()) {
-      throw std::runtime_error("option '" + opt_name + "' has no implicit value");
+      throw std::runtime_error(fmt::format("option '{}' has no implicit value", opt_name));
     }
     opt.result_value = opt.implicit_value;
   }
@@ -643,6 +686,8 @@ class Cmdline {
   std::unordered_map<std::string, size_t> search_idx_;
   std::vector<Option> options_;
   std::vector<std::string> nonoptions_;
+  std::string nonopt_name_;
+  bool is_nonopt_required_;
 };
 
 }  // namespace ascpp

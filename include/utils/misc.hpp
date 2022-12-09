@@ -35,7 +35,7 @@ constexpr bool is_specialization_v = is_specialization<Ref<Args...>, Ref>::value
 inline auto DebugGraphAnsiString(std::string_view str) -> std::string {
   auto ret = ""s;
   for (char c : str) {
-    if (std::isgraph(c)) {
+    if (std::isgraph(static_cast<unsigned char>(c))) {
       ret += c;
     } else {
       ret += fmt::format("\\x{:02x}", c);
@@ -88,7 +88,7 @@ inline auto GetStrAndBase(std::string_view str) -> std::pair<std::string, int> {
 inline auto Stoi(std::string_view str) -> int {
   auto [int_str, base] = detail::GetStrAndBase(str);
   auto ret = 0;
-  auto idx = 0ULL;
+  auto idx = 0UZ;
   ret = std::stoi(std::string(int_str), &idx, base);
   if (idx != int_str.size()) {
     throw std::invalid_argument("");
@@ -99,7 +99,7 @@ inline auto Stoi(std::string_view str) -> int {
 inline auto Stoull(std::string_view str) -> unsigned long long {
   auto [int_str, base] = detail::GetStrAndBase(str);
   auto ret = 0;
-  auto idx = 0ULL;
+  auto idx = 0UZ;
   ret = std::stoull(int_str, &idx, base);
   if (idx != int_str.size()) {
     throw std::invalid_argument("");

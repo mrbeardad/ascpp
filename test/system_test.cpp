@@ -19,9 +19,9 @@ TEST(TestMisc, GetAndSetEnv) {
 }
 
 TEST(TestDirectories, Directories) {
-  std::clog << "GetHomeDir()  : " << ascpp::GetHomeDir().Unwrap() << std::endl;
-  std::clog << "GetConfigDir(): " << ascpp::GetConfigDir().Unwrap() << std::endl;
-  std::clog << "GetCacheDir() : " << ascpp::GetCacheDir().Unwrap() << std::endl;
+  std::clog << "GetHomeDir()    : " << ascpp::GetHomeDir().Unwrap() << std::endl;
+  std::clog << "GetConfigDir()  : " << ascpp::GetConfigDir().Unwrap() << std::endl;
+  std::clog << "GetCacheDir()   : " << ascpp::GetCacheDir().Unwrap() << std::endl;
 
   auto dirpath = ascpp::GetCacheDir().Unwrap() / "ascpp" / "";
   std::filesystem::remove_all(dirpath);
