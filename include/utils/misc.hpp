@@ -12,8 +12,6 @@
 
 #include "fmt/format.h"
 
-namespace ascpp {
-
 using std::string_literals::operator""s;        // NOLINT
 using std::string_view_literals::operator""sv;  // NOLINT
 using std::chrono_literals::operator""ns;       // NOLINT
@@ -22,6 +20,8 @@ using std::chrono_literals::operator""ms;       // NOLINT
 using std::chrono_literals::operator""s;        // NOLINT
 using std::chrono_literals::operator""min;      // NOLINT
 using std::chrono_literals::operator""h;        // NOLINT
+
+namespace ascpp {
 
 template <typename Test, template <typename...> class Ref>
 struct is_specialization : std::false_type {};

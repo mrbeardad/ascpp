@@ -1,6 +1,5 @@
 #include "utils/cmdline.hpp"
 #include <float.h>
-#include <vcruntime.h>
 
 #include <any>
 #include <cmath>
@@ -1039,15 +1038,21 @@ TEST(TestCmdline, MultiOpt) {
   cmd.ParseArgs(args.size(), args.data());
   auto vb = std::vector<bool>{true};
   EXPECT_EQ(cmd.GetValue<std::vector<bool>>("b"), vb);
-  auto vi = std::vector<int>{1};
+  auto vi = std::vector<int>{1, 0};
   EXPECT_EQ(cmd.GetValue<std::vector<int>>("i"), vi);
-  auto vz = std::vector<size_t>{0};
+  auto vz = std::vector<size_t>{0, 0};
   EXPECT_EQ(cmd.GetValue<std::vector<size_t>>("z"), vz);
   auto vf = std::vector<float>{0, 1};
   EXPECT_EQ(cmd.GetValue<std::vector<float>>("f"), vf);
-  auto vd = std::vector<double>{1, 0};
+  auto vd = std::vector<double>{1, 0, 0};
   EXPECT_EQ(cmd.GetValue<std::vector<double>>("d"), vd);
   auto vs = std::vector<std::string>{"", "", "1"};
   EXPECT_EQ(cmd.GetValue<std::vector<std::string>>("s"), vs);
-}
 
+  cmd = ascpp::Cmdline(&app_info);
+  cmd.AddOption<std::vector<std::string>>('s', "string", "string option");
+  args = {"ascpp", "-s,1,2,3,,"};
+  cmd.ParseArgs(args.size(), args.data());
+  vs = {"", "1", "2", "3", "", ""};
+  EXPECT_EQ(cmd.GetValue<std::vector<std::string>>("s"), vs);
+}

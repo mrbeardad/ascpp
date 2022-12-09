@@ -595,7 +595,7 @@ class Cmdline {
         }
         case Option::M_BOOL: {
           auto vec = std::vector<bool>();
-          for (auto word : std::views::split(opt_value, ",")) {
+          for (auto word : std::views::split(opt_value, ","s)) {
             vec.emplace_back(map_to_bool({word.begin(), word.end()}));
           }
           opt.result_value = vec;
@@ -603,8 +603,9 @@ class Cmdline {
         }
         case Option::M_INT: {
           auto vec = std::vector<int>();
-          for (auto word : std::views::split(opt_value, ",")) {
-            auto value = opt_value.empty() ? 0 : Stoi({word.begin(), word.end()});
+          for (auto word : std::views::split(opt_value, ","s)) {
+            auto sv = std::string_view(word.begin(), word.end());
+            auto value = sv.empty() ? 0 : Stoi(sv);
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -613,9 +614,9 @@ class Cmdline {
         }
         case Option::M_SIZE: {
           auto vec = std::vector<size_t>();
-          for (auto word : std::views::split(opt_value, ",")) {
-            auto value
-                = opt_value.empty() ? static_cast<size_t>(0) : Stoull({word.begin(), word.end()});
+          for (auto word : std::views::split(opt_value, ","s)) {
+            auto sv = std::string_view(word.begin(), word.end());
+            auto value = sv.empty() ? 0UZ : Stoull(sv);
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -624,11 +625,11 @@ class Cmdline {
         }
         case Option::M_FLOAT: {
           auto vec = std::vector<float>();
-          for (auto word : std::views::split(opt_value, ",")) {
+          for (auto word : std::views::split(opt_value, ","s)) {
+            auto s = std::string(word.begin(), word.end());
             auto idx = 0UZ;
-            auto value
-                = opt_value.empty() ? 0.0F : std::stof(std::string(word.begin(), word.end()), &idx);
-            if (idx != opt_value.size()) {
+            auto value = s.empty() ? 0.0F : std::stof(s, &idx);
+            if (idx != s.size()) {
               throw std::invalid_argument("");
             }
             throw_when_invalid(value);
@@ -639,11 +640,11 @@ class Cmdline {
         }
         case Option::M_DOUBLE: {
           auto vec = std::vector<double>();
-          for (auto word : std::views::split(opt_value, ",")) {
+          for (auto word : std::views::split(opt_value, ","s)) {
+            auto s = std::string(word.begin(), word.end());
             auto idx = 0UZ;
-            auto value
-                = opt_value.empty() ? 0.0 : std::stod(std::string(word.begin(), word.end()), &idx);
-            if (idx != opt_value.size()) {
+            auto value = s.empty() ? 0.0 : std::stod(s, &idx);
+            if (idx != s.size()) {
               throw std::invalid_argument("");
             }
             throw_when_invalid(value);
@@ -654,7 +655,7 @@ class Cmdline {
         }
         case Option::M_STRING: {
           auto vec = std::vector<std::string>();
-          for (auto word : std::views::split(opt_value, ",")) {
+          for (auto word : std::views::split(opt_value, ","s)) {
             auto value = std::string(word.begin(), word.end());
             throw_when_invalid(value);
             vec.emplace_back(value);

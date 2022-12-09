@@ -1,6 +1,11 @@
 #include "utils/misc.hpp"
-#include <limits>
 
+#include <iostream>
+#include <limits>
+#include <ranges>
+#include <string>
+
+#include "fmt/core.h"
 #include "gtest/gtest.h"
 
 TEST(TestMisc, Stoi) {
