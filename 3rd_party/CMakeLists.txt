@@ -9,12 +9,6 @@ endif()
 # (fmt::fmt)
 add_subdirectory(fmt) # TODO: migrate to std::format when it is mature enough
 
-# (spdlog::spdlog)
-set(SPDLOG_FMT_EXTERNAL_HO
-    ON
-    CACHE BOOL "" FORCE)
-add_subdirectory(spdlog)
-
 # (nlohmann_json::nlohmann_json)
 add_subdirectory(nlohmannjson)
 

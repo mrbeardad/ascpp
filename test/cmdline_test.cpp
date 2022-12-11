@@ -1,5 +1,4 @@
 #include "utils/cmdline.hpp"
-#include <float.h>
 
 #include <any>
 #include <cmath>
@@ -45,10 +44,46 @@ TEST(TestCmdline, MapTypeEnumToStr) {
   EXPECT_EQ(ascpp::Option::MapTypeEnumToStr(ascpp::Option::M_STRING), "list of string");
 }
 
+TEST(TestCmdline, CheckValue) {
+  auto cmd = ascpp::Cmdline(&app_info);
+  auto args = std::vector<const char*>();
+
+  auto optadder
+      = cmd.AddOption<int>('i', "int", "int option").WithLimits([](int i) { return i % 2; });
+  args = {"ascpp", "-i0"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "-i1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 1);
+  args = {"ascpp", "-i2"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+
+  optadder.WithLimits({0, 1, 1, 2, 3, 5});
+  args = {"ascpp", "-i0"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 0);
+  args = {"ascpp", "-i1"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 1);
+  args = {"ascpp", "-i2"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 2);
+  args = {"ascpp", "-i3"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 3);
+  args = {"ascpp", "-i4"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+  args = {"ascpp", "-i5"};
+  cmd.ParseArgs(args.size(), args.data());
+  EXPECT_EQ(cmd.GetValue<int>("i"), 5);
+  args = {"ascpp", "-i6"};
+  EXPECT_ANY_THROW(cmd.ParseArgs(args.size(), args.data()));
+}
+
 TEST(TestCmdline, AddSingleOptions) {
   auto cmd = ascpp::Cmdline(&app_info);
-
   cmd.AddOption<bool>('b', "bool", "bool desc");
+
   auto& b = cmd.GetOption('b');
   auto& bol = cmd.GetOption("bool");
   EXPECT_EQ(&b, &bol);
@@ -132,8 +167,8 @@ TEST(TestCmdline, AddSingleOptions) {
 
 TEST(TestCmdline, AddMultiOptions) {
   auto cmd = ascpp::Cmdline(&app_info);
-
   cmd.AddOption<std::vector<bool>>('b', "bool", "bool desc");
+
   auto& b = cmd.GetOption('b');
   auto& bol = cmd.GetOption("bool");
   EXPECT_EQ(&b, &bol);
@@ -226,8 +261,8 @@ TEST(TestCmdline, AddMultiOptions) {
 
 TEST(TestCmdline, AddBadOptions) {
   auto cmd = ascpp::Cmdline{&app_info};
-
   cmd.AddOption<bool>('o', "option", "normal option");
+
   EXPECT_ANY_THROW(cmd.AddOption<bool>("option", "duplicate long option name"));
   EXPECT_ANY_THROW(cmd.AddOption<bool>('o', "longoption", "duplicate short option name"));
 
