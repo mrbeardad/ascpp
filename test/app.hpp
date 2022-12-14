@@ -2,4 +2,4 @@
 
 #include "ascpp.hpp"
 
-inline ascpp::AppInfo app_info{"mrbeardad", "ascpp", "awesome cpp framework", 0, 0, 1};
+inline ascpp::app_info info{"mrbeardad", "ascpp", "awesome cpp framework", 0, 0, 1};

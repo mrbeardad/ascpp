@@ -20,16 +20,16 @@ struct AppConfig {
   int patch_ver;
 };
 
-class App : public AppInfo, public Cmdline {
+class App : public app_info, public cmdline {
  public:
   explicit App(AppConfig config)
-      : AppInfo(std::move(config.org_name),
-                std::move(config.app_name),
-                std::move(config.app_desc),
-                config.major_ver,
-                config.minor_ver,
-                config.patch_ver),
-        Cmdline{static_cast<AppInfo*>(this)} {}
+      : app_info(std::move(config.org_name),
+                 std::move(config.app_name),
+                 std::move(config.app_desc),
+                 config.major_ver,
+                 config.minor_ver,
+                 config.patch_ver),
+        cmdline{static_cast<app_info*>(this)} {}
 
   App(App&&) = default;
   App(const App&) = default;

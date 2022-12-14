@@ -4,13 +4,12 @@
 #include <chrono>
 #include <concepts>
 #include <filesystem>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
-
-#include "fmt/format.h"
 
 using std::string_literals::operator""s;        // NOLINT
 using std::string_view_literals::operator""sv;  // NOLINT
@@ -32,21 +31,9 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
 template <template <typename...> class Ref, typename... Args>
 constexpr bool is_specialization_v = is_specialization<Ref<Args...>, Ref>::value;
 
-inline auto DebugGraphAnsiString(std::string_view str) -> std::string {
-  auto ret = ""s;
-  for (char c : str) {
-    if (std::isgraph(static_cast<unsigned char>(c))) {
-      ret += c;
-    } else {
-      ret += fmt::format("\\x{:02x}", c);
-    }
-  }
-  return ret;
-}
-
 namespace detail {
 
-inline auto GetStrAndBase(std::string_view str) -> std::pair<std::string, int> {
+inline auto get_int_str_and_base(std::string_view str) -> std::pair<std::string, int> {
   auto int_str = ""s;
   auto base = 10;
 
@@ -80,29 +67,58 @@ inline auto GetStrAndBase(std::string_view str) -> std::pair<std::string, int> {
     int_str += str;
     base = 10;
   }
+
   return {int_str, base};
 }
 
 }  // namespace detail
 
-inline auto Stoi(std::string_view str) -> int {
-  auto [int_str, base] = detail::GetStrAndBase(str);
-  auto ret = 0;
+inline auto to_int(std::string_view str) -> int {
+  auto [int_str, base] = detail::get_int_str_and_base(str);
   auto idx = 0UZ;
-  ret = std::stoi(std::string(int_str), &idx, base);
+  auto ret = std::stoi(int_str, &idx, base);
   if (idx != int_str.size()) {
     throw std::invalid_argument("");
   }
   return ret;
 }
 
-inline auto Stoull(std::string_view str) -> unsigned long long {
-  auto [int_str, base] = detail::GetStrAndBase(str);
-  auto ret = 0;
+inline auto to_ull(std::string_view str) -> unsigned long long {
+  auto [int_str, base] = detail::get_int_str_and_base(str);
   auto idx = 0UZ;
-  ret = std::stoull(int_str, &idx, base);
+  auto ret = std::stoull(int_str, &idx, base);
   if (idx != int_str.size()) {
     throw std::invalid_argument("");
+  }
+  return ret;
+}
+
+inline auto to_float(const std::string& str) -> float {
+  auto idx = 0UZ;
+  auto ret = std::stof(str, &idx);
+  if (idx != str.size()) {
+    throw std::invalid_argument("");
+  }
+  return ret;
+}
+
+inline auto to_double(const std::string& str) -> double {
+  auto idx = 0UZ;
+  auto ret = std::stod(str, &idx);
+  if (idx != str.size()) {
+    throw std::invalid_argument("");
+  }
+  return ret;
+}
+
+inline auto debug_string_ansi_graph(std::string_view str) -> std::string {
+  auto ret = ""s;
+  for (char c : str) {
+    if (std::isgraph(static_cast<unsigned char>(c))) {
+      ret += c;
+    } else {
+      ret += std::format("\\x{:02x}", c);
+    }
   }
   return ret;
 }

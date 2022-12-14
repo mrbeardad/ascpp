@@ -6,7 +6,7 @@
 
 TEST(TestConfig, BasicUsage) {
   ascpp::Config cfg{};
-  auto init_res = cfg.Init(app_info, ascpp::Config::kUserConfig);
+  auto init_res = cfg.Init(info, ascpp::Config::kUserConfig);
   if (init_res.IsErr()) {
     std::cout << "fuck" << std::endl;
   }

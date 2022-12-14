@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vcruntime.h>
 #include <algorithm>
 #include <any>
 #include <array>
@@ -31,19 +32,19 @@
 namespace ascpp {
 
 template <typename T>
-concept SingleOpt
+concept single_option
     = std::is_same_v<T, bool> || std::is_same_v<T, int> || std::is_same_v<T, size_t>
       || std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
 
 template <typename T>
-concept MultiOpt = is_specialization_v<std::vector, T> && SingleOpt<typename T::value_type>;
+concept multi_option = is_specialization_v<std::vector, T> && single_option<typename T::value_type>;
 
 template <typename T>
-concept Opt = SingleOpt<T> || MultiOpt<T>;
+concept option_type = single_option<T> || multi_option<T>;
 
-struct Option {
+struct option {
   // Use enum instead of std::any::type, so switch is available in runtime
-  enum OptType {
+  enum type {
     S_BOOL,
     S_INT,
     S_SIZE,
@@ -58,8 +59,8 @@ struct Option {
     M_STRING
   };
 
-  template <Opt T>
-  static consteval auto MapTypeToEnum() -> OptType {
+  template <option_type T>
+  static consteval auto get_type() -> type {
     if constexpr (std::is_same_v<T, bool>) {
       return S_BOOL;
     }
@@ -98,7 +99,7 @@ struct Option {
     }
   }
 
-  static inline auto MapTypeEnumToStr(OptType type) -> const char* {
+  static inline auto type_to_str(type type) -> const char* {
     static auto map
         = std::array{"bool",           "int",           "size_t",         "float",
                      "double",         "string",        "list of bool",   "list of int",
@@ -106,8 +107,8 @@ struct Option {
     return map[static_cast<size_t>(type)];
   }
 
-  template <SingleOpt T>
-  auto CheckValue(const T& value) -> bool {
+  template <single_option T>
+  auto check_value(const T& value) -> bool {
     if (!limits.has_value()) {
       return true;
     }
@@ -117,13 +118,8 @@ struct Option {
     return std::any_cast<std::function<bool(const T&)>&>(limits)(value);
   }
 
-  template <MultiOpt T>
-  auto CheckValue(const T& values) -> bool {
-    return CheckMultiValue(values) == values.end();
-  }
-
-  template <MultiOpt T>
-  auto CheckMultiValue(const T& values) -> typename T::const_iterator {
+  template <multi_option T>
+  auto check_value(const T& values) -> typename T::const_iterator {
     if (!limits.has_value()) {
       return values.end();
     }
@@ -135,7 +131,7 @@ struct Option {
     return std::ranges::find_if(values, [&callable](auto e) { return !callable(e); });
   }
 
-  OptType opt_type;
+  type opt_type;
   std::string short_opt;
   std::string long_opt;
   std::string opt_desc;
@@ -146,71 +142,71 @@ struct Option {
 };
 
 template <typename T, typename = void>
-struct OptValueType;
+struct option_value_type;
 
 template <typename T>
-struct OptValueType<T, std::enable_if_t<SingleOpt<T>>> {
-  using Type = T;
+struct option_value_type<T, std::enable_if_t<single_option<T>>> {
+  using type = T;
 };
 
 template <typename T>
-struct OptValueType<T, std::enable_if_t<MultiOpt<T>>> {
-  using Type = typename T::value_type;
+struct option_value_type<T, std::enable_if_t<multi_option<T>>> {
+  using type = typename T::value_type;
 };
 
-template <Opt T>
-class OptionAdder {
+template <option_type T>
+class option_adder {
  public:
-  using ValueType = typename OptValueType<T>::Type;
+  using value_type = typename option_value_type<T>::type;
 
-  explicit OptionAdder(Option* opt) : opt_(opt) {}
+  explicit option_adder(option* opt) : opt_(opt) {}
 
-  OptionAdder(OptionAdder&&) noexcept = default;
-  OptionAdder(const OptionAdder&) = default;
-  auto operator=(OptionAdder&&) noexcept -> OptionAdder& = default;
-  auto operator=(const OptionAdder&) -> OptionAdder& = default;
-  ~OptionAdder() = default;
+  option_adder(option_adder&&) noexcept = default;
+  option_adder(const option_adder&) = default;
+  auto operator=(option_adder&&) noexcept -> option_adder& = default;
+  auto operator=(const option_adder&) -> option_adder& = default;
+  ~option_adder() = default;
 
-  auto WithLimits(std::unordered_set<ValueType> limit_set) -> OptionAdder& {
+  auto with_limits(std::unordered_set<value_type> limit_set) -> option_adder& {
     opt_->limits = std::move(limit_set);
     return *this;
   }
 
-  auto WithLimits(std::function<bool(const ValueType&)> callable) -> OptionAdder& {
+  auto with_limits(std::function<bool(const value_type&)> callable) -> option_adder& {
     opt_->limits = std::move(callable);
     return *this;
   }
 
-  auto WithDefault(T default_value) -> OptionAdder& {
-    if constexpr (SingleOpt<T>) {
-      if (!opt_->CheckValue(default_value)) {
+  auto with_default(T default_value) -> option_adder& {
+    if constexpr (single_option<T>) {
+      if (!opt_->check_value(default_value)) {
         throw std::logic_error(fmt::format("the default value is invalid for {} option '{}' : {}",
-                                           Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
+                                           option::type_to_str(opt_->opt_type), opt_->long_opt,
                                            default_value));
       }
     } else {
-      if (auto itr = opt_->CheckMultiValue(default_value); itr != default_value.end()) {
+      if (auto itr = opt_->check_value(default_value); itr != default_value.end()) {
         throw std::logic_error(
             fmt::format("the value in default values is invalid for {} option '{}': {}",
-                        Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+                        option::type_to_str(opt_->opt_type), opt_->long_opt, *itr));
       }
     }
     opt_->default_value = std::move(default_value);
     return *this;
   }
 
-  auto WithImplicit(T implicit_value) -> OptionAdder& {
-    if constexpr (SingleOpt<T>) {
-      if (!opt_->CheckValue(implicit_value)) {
+  auto with_implicit(T implicit_value) -> option_adder& {
+    if constexpr (single_option<T>) {
+      if (!opt_->check_value(implicit_value)) {
         throw std::logic_error(fmt::format("the implicit value is invalid for {} option '{}' : {}",
-                                           Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt,
+                                           option::type_to_str(opt_->opt_type), opt_->long_opt,
                                            implicit_value));
       }
     } else {
-      if (auto itr = opt_->CheckMultiValue(implicit_value); itr != implicit_value.end()) {
+      if (auto itr = opt_->check_value(implicit_value); itr != implicit_value.end()) {
         throw std::logic_error(
             fmt::format("the value in implicit values is invalid for {} option '{}': {}",
-                        Option::MapTypeEnumToStr(opt_->opt_type), opt_->long_opt, *itr));
+                        option::type_to_str(opt_->opt_type), opt_->long_opt, *itr));
       }
     }
     opt_->implicit_value = std::move(implicit_value);
@@ -218,52 +214,52 @@ class OptionAdder {
   }
 
  private:
-  Option* opt_;
+  option* opt_;
 };
 
-class Cmdline {
+class cmdline {
  public:
-  explicit Cmdline(const AppInfo* app_info) : app_info_(app_info) {}
+  explicit cmdline(const app_info* app_info) : app_info_(app_info) {}
 
-  Cmdline(Cmdline&&) = default;
-  Cmdline(const Cmdline&) = default;
-  auto operator=(Cmdline&&) -> Cmdline& = default;
-  auto operator=(const Cmdline&) -> Cmdline& = default;
-  ~Cmdline() = default;
+  cmdline(cmdline&&) = default;
+  cmdline(const cmdline&) = default;
+  auto operator=(cmdline&&) -> cmdline& = default;
+  auto operator=(const cmdline&) -> cmdline& = default;
+  ~cmdline() = default;
 
-  template <Opt T>
-  auto AddOption(char short_opt, std::string long_opt, std::string opt_desc) -> OptionAdder<T> {
-    CheckShortOpt(short_opt);
-    CheckLongOpt(long_opt);
+  template <option_type T>
+  auto add_option(char short_opt, std::string long_opt, std::string opt_desc) -> option_adder<T> {
+    check_optname(short_opt);
+    check_optname(long_opt);
 
     auto str_short_option = std::string{short_opt};
     search_idx_[str_short_option] = options_.size();
     search_idx_[long_opt] = options_.size();
-    options_.emplace_back(Option{Option::MapTypeToEnum<T>(), std::move(str_short_option),
+    options_.emplace_back(option{option::get_type<T>(), std::move(str_short_option),
                                  std::move(long_opt), std::move(opt_desc)});
-    auto opt_adder = OptionAdder<T>(&options_.back());
+    auto opt_adder = option_adder<T>(&options_.back());
     if constexpr (std::is_same_v<T, bool>) {
-      opt_adder.WithDefault(false).WithImplicit(true);
+      opt_adder.with_default(false).with_implicit(true);
     }
     return opt_adder;
   }
 
-  template <Opt T>
-  auto AddOption(std::string long_opt, std::string opt_desc) -> OptionAdder<T> {
-    CheckLongOpt(long_opt);
+  template <option_type T>
+  auto add_option(std::string long_opt, std::string opt_desc) -> option_adder<T> {
+    check_optname(long_opt);
 
     search_idx_[long_opt] = options_.size();
     options_.emplace_back(
-        Option{Option::MapTypeToEnum<T>(), "", std::move(long_opt), std::move(opt_desc)});
+        option{option::get_type<T>(), "", std::move(long_opt), std::move(opt_desc)});
 
-    auto opt_adder = OptionAdder<T>(&options_.back());
+    auto opt_adder = option_adder<T>(&options_.back());
     if constexpr (std::is_same_v<T, bool>) {
-      opt_adder.WithDefault(false).WithImplicit(true);
+      opt_adder.with_default(false).with_implicit(true);
     }
     return opt_adder;
   }
 
-  auto AllowNonOptions(std::string name, bool is_required) -> void {
+  auto allow_nonoptions(std::string name, bool is_required) -> void {
     // empty nonopt_name_ means nonoptions are disallowed
     if (name.empty()) {
       throw std::logic_error("empty name for nonoptions is not allowed.");
@@ -272,30 +268,29 @@ class Cmdline {
     is_nonopt_required_ = is_required;
   }
 
-  auto GetOption(const std::string& long_opt) -> const Option& {
+  auto get_option(const std::string& long_opt) -> const option& {
     return options_.at(search_idx_.at(long_opt));
   }
 
-  auto GetOption(char short_opt) -> const Option& {
+  auto get_option(char short_opt) -> const option& {
     return options_.at(search_idx_.at({short_opt}));
   }
 
-  auto HelpString() -> std::string {
-    auto longopt_str = [](Option& opt) {
+  auto help_string() -> std::string {
+    auto longopt_str = [](option& opt) {
       auto ret = ""s;
       if (!opt.implicit_value.has_value()) {
-        ret = fmt::format("--{}=<{}>", opt.long_opt, Option::MapTypeEnumToStr(opt.opt_type));
-      } else if (opt.opt_type != Option::S_BOOL) {
-        ret = fmt::format("--{}[=<{}>]", opt.long_opt, Option::MapTypeEnumToStr(opt.opt_type));
+        ret = fmt::format("--{}=<{}>", opt.long_opt, option::type_to_str(opt.opt_type));
+      } else if (opt.opt_type != option::S_BOOL) {
+        ret = fmt::format("--{}[=<{}>]", opt.long_opt, option::type_to_str(opt.opt_type));
       } else {
         ret = fmt::format("--{}", opt.long_opt);
       }
       return ret;
     };
 
-    auto ret
-        = fmt::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->AppName(),
-                      app_info_->AppVersion(), app_info_->AppDescription(), app_info_->AppName());
+    auto ret = fmt::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->app_name(),
+                           app_info_->app_version(), app_info_->app_intro(), app_info_->app_name());
     if (!nonopt_name_.empty()) {
       ret += "[--] ";
       if (is_nonopt_required_) {
@@ -361,7 +356,7 @@ class Cmdline {
     return ret;
   }
 
-  auto ParseArgs(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
+  auto parse_args(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
     for (auto& opt : options_) {
       opt.result_value.reset();
     }
@@ -390,20 +385,21 @@ class Cmdline {
 
         if (es_pos == std::string::npos) {
           // form: --option [value]
-          if (!HasImplicitValue(opt_name)) {
+          if (!has_implicit(opt_name)) {
             if (i + 1 >= argc) {
               throw std::runtime_error(fmt::format("requires a value for option '{}'", opt_name));
             }
-            SetValue(opt_name, argv[++i]);
+            set_value(opt_name, argv[++i]);
           } else {
-            SetValueWithImplicit(opt_name);
+            auto& opt = options_.at(search_idx_.at(opt_name));
+            opt.result_value = opt.implicit_value;
           }
         } else {
           // form: --option=[value]
           if (es_pos + 1 >= this_arg.size()) {
-            SetValue(opt_name, "");
+            set_value(opt_name, "");
           } else {
-            SetValue(opt_name, this_arg.substr(es_pos + 1));
+            set_value(opt_name, this_arg.substr(es_pos + 1));
           }
         }
       } else if (this_arg.starts_with("-")) {
@@ -413,29 +409,31 @@ class Cmdline {
           if (opt_idx == search_idx_.end()) {
             throw std::runtime_error(fmt::format("no option '{}'", cur_opt));
           }
-          if (!HasImplicitValue(cur_opt)) {
+          if (!has_implicit(cur_opt)) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt value
               if (i + 1 >= argc) {
                 throw std::runtime_error(fmt::format("requires a value for option '{}'", cur_opt));
               }
-              SetValue(cur_opt, argv[++i]);
+              set_value(cur_opt, argv[++i]);
             } else {
               // form: -optvalue
-              SetValue(cur_opt, this_arg.substr(j + 1));
+              set_value(cur_opt, this_arg.substr(j + 1));
               break;
             }
-          } else if (options_.at(search_idx_.at(cur_opt)).opt_type != Option::S_BOOL) {
+          } else if (options_.at(search_idx_.at(cur_opt)).opt_type != option::S_BOOL) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt
-              SetValueWithImplicit(cur_opt);
+              auto& opt = options_.at(search_idx_.at(cur_opt));
+              opt.result_value = opt.implicit_value;
             } else {
               // form: -optvlaue
-              SetValue(cur_opt, this_arg.substr(j + 1));
+              set_value(cur_opt, this_arg.substr(j + 1));
               break;
             }
           } else {
-            SetValueWithImplicit(cur_opt);
+            auto& opt = options_.at(search_idx_.at(cur_opt));
+            opt.result_value = opt.implicit_value;
           }
         }
       } else {
@@ -462,40 +460,40 @@ class Cmdline {
     if (print_and_exit) {
       std::cerr << excep.what() << std::endl;
       std::cerr << "---\n" << std::endl;
-      std::cerr << HelpString() << std::endl;
+      std::cerr << help_string() << std::endl;
       std::exit(1);
     }
     throw;
   }
 
-  template <Opt T>
-  auto GetValue(const std::string& opt_name) -> const T& {
+  template <option_type T>
+  auto get_value(const std::string& opt_name) -> const T& {
     return std::any_cast<T&>(options_.at(search_idx_.at(opt_name)).result_value);
   }
 
-  template <Opt T>
-  auto GetValue(char opt_name) -> const T& {
-    return GetValue<T>({opt_name});
+  template <option_type T>
+  auto get_value(char opt_name) -> const T& {
+    return get_value<T>({opt_name});
   }
 
-  auto GetNonOptions() -> const std::vector<std::string>& { return nonoptions_; }
+  auto get_nonoptions() -> const std::vector<std::string>& { return nonoptions_; }
 
  private:
-  auto CheckShortOpt(char opt_name) const -> void {
+  auto check_optname(char opt_name) const -> void {
     auto str_opt = std::string{opt_name};
     if (search_idx_.find(str_opt) != search_idx_.end()) {
       throw std::logic_error(fmt::format("duplicate option '{}'", str_opt));
     }
     if (!std::isgraph(opt_name)) {
       throw std::logic_error(fmt::format("short option name must be a graphical character: '{}'",
-                                         DebugGraphAnsiString(str_opt)));
+                                         debug_string_ansi_graph(str_opt)));
     }
     if (opt_name == '-') {
       throw std::logic_error("short option name could not be '-'");
     }
   }
 
-  auto CheckLongOpt(const std::string& opt_name) const -> void {
+  auto check_optname(const std::string& opt_name) const -> void {
     if (search_idx_.find(opt_name) != search_idx_.end()) {
       throw std::logic_error(fmt::format("duplicate option '{}'", opt_name));
     }
@@ -503,7 +501,7 @@ class Cmdline {
       throw std::logic_error(
           fmt::format("long option name requires at least 2 character: '{}'", opt_name));
     }
-    if (auto debug = DebugGraphAnsiString(opt_name); debug != opt_name) {
+    if (auto debug = debug_string_ansi_graph(opt_name); debug != opt_name) {
       throw std::logic_error(
           fmt::format("characters in long option name must be graphical: '{}'", debug));
     }
@@ -512,24 +510,23 @@ class Cmdline {
     }
   }
 
-  auto HasImplicitValue(const std::string& opt_name) -> bool {
+  auto has_implicit(const std::string& opt_name) -> bool {
     return options_.at(search_idx_.at(opt_name)).implicit_value.has_value();
   }
 
-  auto SetValue(const std::string& opt_name, std::string opt_value) -> void {
+  auto set_value(const std::string& opt_name, std::string opt_value) -> void {
     auto& opt = options_.at(search_idx_.at(opt_name));
 
     auto throw_when_invalid = [&opt_name, &opt_value, &opt]<typename T>(const T& value) {
-      if constexpr (MultiOpt<T>) {
-        if (auto itr = opt.CheckMultiValue(value); itr != value.end()) {
+      if constexpr (multi_option<T>) {
+        if (auto itr = opt.check_value(value); itr != value.end()) {
           throw std::logic_error(fmt::format("invalid value for {} option '{}': {}",
-                                             Option::MapTypeEnumToStr(opt.opt_type), opt_name,
-                                             *itr));
+                                             option::type_to_str(opt.opt_type), opt_name, *itr));
         }
       } else {
-        if (!opt.CheckValue(value)) {
+        if (!opt.check_value(value)) {
           throw std::logic_error(fmt::format("invalid value for {} option '{}': {}",
-                                             Option::MapTypeEnumToStr(opt.opt_type), opt_name,
+                                             option::type_to_str(opt.opt_type), opt_name,
                                              opt_value));
         }
       }
@@ -549,51 +546,42 @@ class Cmdline {
 
     try {
       switch (opt.opt_type) {
-        case Option::S_BOOL: {
+        case option::S_BOOL: {
           std::ranges::for_each(opt_value, ::tolower);
           opt.result_value = map_to_bool(opt_value);
           break;
         }
-        case Option::S_INT: {
-          auto value = opt_value.empty() ? 0 : Stoi(opt_value);
+        case option::S_INT: {
+          auto value = opt_value.empty() ? 0 : to_int(opt_value);
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
-        case Option::S_SIZE: {
-          auto value
-              = opt_value.empty() ? static_cast<size_t>(0) : static_cast<size_t>(Stoull(opt_value));
+        case option::S_SIZE: {
+          auto value = opt_value.empty() ? 0UZ : static_cast<size_t>(to_ull(opt_value));
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
-        case Option::S_FLOAT: {
-          auto idx = 0UZ;
-          auto value = opt_value.empty() ? 0.0F : std::stof(opt_value, &idx);
-          if (idx != opt_value.size()) {
-            throw std::invalid_argument("");
-          }
+        case option::S_FLOAT: {
+          auto value = opt_value.empty() ? 0.0F : to_float(opt_value);
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
-        case Option::S_DOUBLE: {
-          auto idx = 0UZ;
-          auto value = opt_value.empty() ? 0.0 : std::stod(opt_value, &idx);
-          if (idx != opt_value.size()) {
-            throw std::invalid_argument("");
-          }
+        case option::S_DOUBLE: {
+          auto value = opt_value.empty() ? 0.0 : to_double(opt_value);
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
-        case Option::S_STRING: {
+        case option::S_STRING: {
           auto& value = opt_value;
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
-        case Option::M_BOOL: {
+        case option::M_BOOL: {
           auto vec = std::vector<bool>();
           for (auto word : std::views::split(opt_value, ","s)) {
             vec.emplace_back(map_to_bool({word.begin(), word.end()}));
@@ -601,59 +589,51 @@ class Cmdline {
           opt.result_value = vec;
           break;
         }
-        case Option::M_INT: {
+        case option::M_INT: {
           auto vec = std::vector<int>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto sv = std::string_view(word.begin(), word.end());
-            auto value = sv.empty() ? 0 : Stoi(sv);
+            auto value = sv.empty() ? 0 : to_int(sv);
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
           opt.result_value = vec;
           break;
         }
-        case Option::M_SIZE: {
+        case option::M_SIZE: {
           auto vec = std::vector<size_t>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto sv = std::string_view(word.begin(), word.end());
-            auto value = sv.empty() ? 0UZ : Stoull(sv);
+            auto value = sv.empty() ? 0UZ : static_cast<size_t>(to_ull(sv));
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
           opt.result_value = vec;
           break;
         }
-        case Option::M_FLOAT: {
+        case option::M_FLOAT: {
           auto vec = std::vector<float>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto s = std::string(word.begin(), word.end());
-            auto idx = 0UZ;
-            auto value = s.empty() ? 0.0F : std::stof(s, &idx);
-            if (idx != s.size()) {
-              throw std::invalid_argument("");
-            }
+            auto value = s.empty() ? 0.0F : to_float(s);
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
           opt.result_value = vec;
           break;
         }
-        case Option::M_DOUBLE: {
+        case option::M_DOUBLE: {
           auto vec = std::vector<double>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto s = std::string(word.begin(), word.end());
-            auto idx = 0UZ;
-            auto value = s.empty() ? 0.0 : std::stod(s, &idx);
-            if (idx != s.size()) {
-              throw std::invalid_argument("");
-            }
+            auto value = s.empty() ? 0.0 : to_double(s);
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
           opt.result_value = vec;
           break;
         }
-        case Option::M_STRING: {
+        case option::M_STRING: {
           auto vec = std::vector<std::string>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto value = std::string(word.begin(), word.end());
@@ -666,26 +646,16 @@ class Cmdline {
       }
     } catch (const std::invalid_argument& ex) {
       throw std::runtime_error(fmt::format("invalid value format for {} option '{}': {}",
-                                           Option::MapTypeEnumToStr(opt.opt_type), opt_name,
-                                           opt_value));
+                                           option::type_to_str(opt.opt_type), opt_name, opt_value));
     } catch (const std::out_of_range& ex) {
       throw std::runtime_error(fmt::format("the value is out of range for {} option '{}': {}",
-                                           Option::MapTypeEnumToStr(opt.opt_type), opt_name,
-                                           opt_value));
+                                           option::type_to_str(opt.opt_type), opt_name, opt_value));
     }
   }
 
-  auto SetValueWithImplicit(const std::string& opt_name) -> void {
-    auto& opt = options_.at(search_idx_.at(opt_name));
-    if (!opt.implicit_value.has_value()) {
-      throw std::runtime_error(fmt::format("option '{}' has no implicit value", opt_name));
-    }
-    opt.result_value = opt.implicit_value;
-  }
-
-  const AppInfo* app_info_;
+  const app_info* app_info_;
   std::unordered_map<std::string, size_t> search_idx_;
-  std::vector<Option> options_;
+  std::vector<option> options_;
   std::vector<std::string> nonoptions_;
   std::string nonopt_name_;
   bool is_nonopt_required_;

@@ -30,9 +30,9 @@ class Config {
   // TODO: Notify confliction, modified obverser
   enum SyncOption { kForceRead = 1, kForceWrite };
 
-  auto Init(const AppInfo& app_info, ConfigType cfg_type) -> Result<void> {
-    auto config_dir = TRY_UNWRAP(GetConfigDir()) / app_info.OrgName();
-    auto config_file = app_info.AppName() + (cfg_type == kUserConfig ? "_user" : "_machine");
+  auto Init(const app_info& app_info, ConfigType cfg_type) -> Result<void> {
+    auto config_dir = TRY_UNWRAP(GetConfigDir()) / app_info.org_name();
+    auto config_file = app_info.app_name() + (cfg_type == kUserConfig ? "_user" : "_machine");
     config_path_ = config_dir / config_file;
     config_path_.replace_extension(".json");
     TRY_UNWRAP(CreateFilePath(config_path_));
