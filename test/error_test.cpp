@@ -1,206 +1,121 @@
 #include "utils/error.hpp"
 
-#include <ios>
-#include <iostream>
-#include <ostream>
-#include <random>
-#include <string>
-#include <system_error>
-#include <type_traits>
-#include <utility>
-#include <variant>
+#include <compare>
 
 #include "gtest/gtest.h"
 
-auto move_construct_times = 0;
-auto move_assign_times = 0;
-auto copy_construct_times = 0;
-auto copy_assign_times = 0;
-
-auto ResetTimes() -> void {
-  move_construct_times = 0;
-  move_assign_times = 0;
-  copy_construct_times = 0;
-  copy_assign_times = 0;
-}
-
-struct Debug {
-  Debug() {}
-
-  Debug(int i) : value(i) {}
-
-  Debug(Debug&& other) noexcept {
-    value = other.value;
-    ++move_construct_times;
-  }
-
-  Debug(const Debug& other) {
-    value = other.value;
-    ++copy_construct_times;
-  }
-
-  auto operator=(Debug&& other) noexcept -> Debug& {
-    value = other.value;
-    ++move_assign_times;
-    return *this;
-  }
-
-  auto operator=(const Debug& other) -> Debug& {
-    value = other.value;
-    ++copy_assign_times;
-    return *this;
-  }
-
-  ~Debug() {}
-
-  auto Reset() -> void { value = 0; }
-
-  int value;
-};
-
-auto operator==(const Debug& lhs, const Debug& rhs) -> bool {
-  return lhs.value == rhs.value;
-}
-
-class MyError : public std::error_category {
+class myerror : public std::error_category {
  public:
-  enum Errc { NO_ERR, ERR_1, ERR_2 };
+  enum errc { NO_ERR, BAD_ERR };
 
-  auto name() const noexcept -> const char* override { return "MyError"; }
+  auto name() const noexcept -> const char* override { return "myerror"; }
 
   auto message(int ec) const -> std::string override {
-    switch (static_cast<Errc>(ec)) {
+    switch (static_cast<errc>(ec)) {
       case NO_ERR:
         return "no error";
-      case ERR_1:
-        return "error 1";
-      case ERR_2:
-        return "error 2";
+      case BAD_ERR:
+        return "bad error";
+      default:
+        return "unkown error";
     }
-    return "unkown error";
   }
 };
 
-MAKE_ERROR_CODE(MyError);
-ERROR_CODE_ENUM(MyError);
+MAKE_ERROR_CODE(myerror);
+ERROR_CODE_ENUM(myerror);
 
-TEST(TestError, BasicUsage) {
-  auto err = make_error_code(MyError::ERR_1);
-  auto res = ascpp::Result<void>(err);
-  EXPECT_ANY_THROW(res.Unwrap());
-  EXPECT_ANY_THROW(throw std::system_error(err));
+struct debug {
+  int val = 0;
+  int val2 = 0;
+
+  debug(int i) : val(i) {}
+
+  auto operator<=>(const debug&) const -> std::strong_ordering = default;
+};
+
+auto get_value_result() -> ascpp::result<debug> {
+  return debug{1};
 }
 
-TEST(TestResult, Constructor) {
-  auto res = ascpp::Result<Debug>();
-  EXPECT_EQ(res.Unwrap(), 0);
-
-  res.Unwrap().Reset();
-  res = Debug(1);
-  EXPECT_EQ(res.Unwrap(), 1);
-
-  res.Unwrap().Reset();
-  res = 1;
-  EXPECT_EQ(res.Unwrap(), 1);
-
-  res.Unwrap().Reset();
-  res = 1.5;
-  EXPECT_EQ(res.Unwrap(), 1);
-
-  res.Unwrap().Reset();
-  res = ascpp::Result<int>(1);
-  EXPECT_EQ(res.Unwrap(), 1);
-
-  res.Unwrap().Reset();
-  res = ascpp::Result<double>(1.5);
-  EXPECT_EQ(res.Unwrap(), 1);
-
-  res.Unwrap().Reset();
-  res = ascpp::Result<Debug>(make_error_code(MyError::ERR_1));
-  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
-
-  // could not conversion from Result<void> to Result<NonVoid>
-  // res.Unwrap().Reset();
-  // res = ascpp::Result<void>();
-  // EXPECT_EQ(res.Unwrap(), 0);
-
-  auto void_res = ascpp::Result<void>(make_error_code(MyError::ERR_1));
-  EXPECT_EQ(void_res.UnwrapErr(), MyError::ERR_1);
-
-  void_res = ascpp::Result<int>();
-  EXPECT_EQ(void_res.IsOk(), true);
-
-  res = make_error_code(MyError::ERR_1);
-  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
-  res = make_error_code(MyError::NO_ERR);
-  EXPECT_EQ(res.IsOk(), true);
+auto get_error_result() -> ascpp::result<debug> {
+  return make_error_code(myerror::BAD_ERR);
 }
 
-TEST(TestResult, BasicUsage) {
-  auto res = ascpp::Result<Debug>();
-  EXPECT_EQ(res.IsOk(), true);
-  EXPECT_EQ(res.IsErr(), false);
-  EXPECT_EQ(res.Unwrap(), 0);
-  EXPECT_ANY_THROW(res.UnwrapErr());
-  EXPECT_EQ(res.UnwrapOr(Debug(1)), 0);
-  EXPECT_EQ(res.UnwrapOr(1), 0);
-  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)), 0);
-  EXPECT_EQ(res.UnwrapOrAssign(1), 0);
-  EXPECT_EQ(res.Match([](auto&& arg) {
-    OK(arg) {
-      return arg.value;
-    }
-    ERR(arg) {
-      return arg.value();
-    }
-  }),
-            0);
+TEST(TestError, ResultUsage) {
+  auto res = get_value_result();
+  EXPECT_TRUE(res);
+  EXPECT_EQ(res.has_value(), true);
+  EXPECT_EQ(res.value(), debug{1});
+  EXPECT_EQ(res->val, 1);
 
-  res = make_error_code(MyError::ERR_1);
-  EXPECT_EQ(res.IsErr(), true);
-  EXPECT_EQ(res.IsOk(), false);
-  EXPECT_EQ(res.UnwrapErr(), MyError::ERR_1);
-  EXPECT_ANY_THROW(res.Unwrap());
-  EXPECT_EQ(res.UnwrapOr(Debug(1)), 1);
-  EXPECT_EQ(res.UnwrapOr(1), 1);
-  EXPECT_EQ(res.UnwrapOrAssign(Debug(1)), 1);
-  EXPECT_EQ(res.Unwrap(), 1);
-  EXPECT_EQ(res.UnwrapOrAssign(2), 1);
-
-  res = make_error_code(MyError::ERR_1);
-  EXPECT_EQ(res.Match([](auto&& arg) {
-    OK(arg) {
-      return arg.value;
-    }
-    ERR(arg) {
-      return arg.value();
-    }
-  }),
-            1);
+  res = get_error_result();
+  EXPECT_FALSE(res);
+  EXPECT_EQ(res.has_value(), false);
+  EXPECT_ANY_THROW(res.value());
+  // res->val will case abort
 }
 
-auto GetResult() -> ascpp::Result<Debug> {
-  auto re = std::default_random_engine(std::random_device()());
-  auto rd = std::bernoulli_distribution();
-  if (rd(re)) {
-    return -1;
-  }
-  return make_error_code(MyError::ERR_1);
+TEST(TestError, ResultConstructorAndAssignment) {
+  auto r1 = ascpp::result<debug>(debug{1});
+  EXPECT_EQ(r1->val, 1);
+  r1 = debug{2};
+  EXPECT_EQ(r1->val, 2);
+
+  // ascpp::result<debug>({1,1}) no match constructor
+  auto r2 = ascpp::result<debug>({1});
+  EXPECT_EQ(r2->val, 1);
+  r2 = {2};
+  EXPECT_EQ(r2->val, 2);
+
+  auto r3 = ascpp::result<debug>(1);
+  EXPECT_EQ(r3->val, 1);
+  r3 = 2;
+  EXPECT_EQ(r3->val, 2);
+
+  auto r4 = ascpp::result<debug>(ascpp::result<int>(1));
+  EXPECT_EQ(r4->val, 1);
+  r4 = ascpp::result<int>(2);
+  EXPECT_EQ(r4->val, 2);
+
+  // ascpp::result<debug>(ascpp::result<void>()) no match constructor
+  auto r5 = ascpp::result<void>(ascpp::result<debug>(1));
+  EXPECT_EQ(r5.has_value(), true);
+  r5 = ascpp::result<debug>(2);
+  EXPECT_EQ(r5.has_value(), true);
+
+  auto r6 = ascpp::result<debug>(make_error_code(myerror::BAD_ERR));
+  EXPECT_EQ(r6.has_value(), false);
+  EXPECT_EQ(r6.error(), make_error_code(myerror::BAD_ERR));
+  r6 = make_error_code(myerror::NO_ERR);
+  EXPECT_EQ(r6.error(), make_error_code(myerror::NO_ERR));
+
+  r5 = r6;
+  EXPECT_EQ(r5.has_value(), false);
+  EXPECT_EQ(r5.error(), r6.error());
 }
 
-auto UseTryUnwrap() -> ascpp::Result<Debug> {
-  auto res = TRY_UNWRAP(GetResult());
-  // do something ...
-  return {};
+TEST(TestError, ResultComparsion) {
+  EXPECT_EQ(ascpp::result<debug>(1), debug{1});
+  EXPECT_EQ(ascpp::result<debug>(1), ascpp::result<debug>(1));
+  EXPECT_EQ(ascpp::result<debug>(1), ascpp::result<int>(1));
+  EXPECT_EQ(ascpp::result<int>(1), ascpp::result<debug>(1));
+  EXPECT_NE(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)), ascpp::result<debug>(1));
+  EXPECT_NE(ascpp::result<debug>(1), ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
+  EXPECT_EQ(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)),
+            ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
 }
 
-TEST(TestResult, TryUnwrap) {
-  UseTryUnwrap().Match([](auto&& arg) {
-    OK(arg) {
-      return arg;
-    }
-    ERR(arg) {
-      return Debug();
-    }
-  });
+#if defined(__GNUC__) || defined(__clang__)
+auto try_unwrap() -> ascpp::result<debug> {
+  auto val = TRY(get_value_result());
+  EXPECT_EQ(val.val, 1);
+  auto err = TRY(get_error_result());
+  return val;
 }
+
+TEST(TestError, TryUnwrap) {
+  auto err = try_unwrap();
+  EXPECT_EQ(err, get_error_result());
+}
+#endif

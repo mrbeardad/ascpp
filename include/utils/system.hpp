@@ -12,61 +12,34 @@
 
 namespace ascpp {
 
-class SysErr : public std::error_category {
- public:
-  enum Errc { NO_ERROR, GET_ENV_ERROR, GET_EMPTY_ENV, SET_ENV_ERROR };
-
-  auto name() const noexcept -> const char* override { return "ascpp:system"; }
-
-  auto message(int ec) const -> std::string override {
-    switch (ec) {
-      case GET_ENV_ERROR:
-        return "get env error";
-      case GET_EMPTY_ENV:
-        return "env value is empty";
-      case SET_ENV_ERROR:
-        return "set env error";
-      default:
-        return "unkown error";
-    }
-  }
-};
-
-MAKE_ERROR_CODE(SysErr);
-}  // namespace ascpp
-
-ERROR_CODE_ENUM(ascpp::SysErr);
-
-namespace ascpp {
-
 /**
  * @brief Get the system environment variable by it's name.
  */
-inline auto GetEnv(const std::string& name) -> Result<std::string> {
+inline auto get_env(const std::string& name) -> result<std::string> {
 #if defined(_WIN32) || defined(_WIN64)
   auto size = size_t();
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
-    return make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(error::GET_ENV_FAILED);
   }
   if (size == 0) {
-    return make_error_code(SysErr::GET_EMPTY_ENV);
+    return make_error_code(error::GET_EMPTY_ENV);
   }
 
   auto value = std::string(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(error::GET_ENV_FAILED);
   }
   value.resize(size - 1);
   return value;
 #else
   auto* value = std::getenv(name.c_str());
   if (value == nullptr) {
-    return make_error_code(SysErr::GET_ENV_ERROR);
+    return make_error_code(error::GET_ENV_ERROR);
   }
   if (std::strlen(value) == 0) {
-    return make_error_code(SysErr::GET_EMPTY_ENV);
+    return make_error_code(error::GET_EMPTY_ENV);
   }
   return value;
 #endif
@@ -75,15 +48,15 @@ inline auto GetEnv(const std::string& name) -> Result<std::string> {
 /**
  * @brief Set the system environment variable.
  */
-inline auto SetEnv(const std::string& name, const std::string& value) -> Result<void> {
+inline auto set_env(const std::string& name, const std::string& value) -> result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
-    return make_error_code(SysErr::SET_ENV_ERROR);
+    return make_error_code(error::SET_ENV_FAILED);
   }
   return {};
 #else
   if (::setenv(name.c_str(), value.c_str(), 1)) {
-    return make_error_code(SysErr::SET_ENV_ERROR);
+    return make_error_code(error::SET_ENV_ERROR);
   }
   return {};
 #endif
@@ -92,33 +65,33 @@ inline auto SetEnv(const std::string& name, const std::string& value) -> Result<
 /**
  * @brief Get the home directory of current user.
  */
-inline auto GetHomeDir() -> Result<std::filesystem::path> {
+inline auto get_home_dir() -> result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
-  return GetEnv("USERPROFILE");
+  return get_env("USERPROFILE");
 #else
-  return GetEnv("HOME");
+  return get_env("HOME");
 #endif
 }
 
 /**
  * @brief Get the configuration directory of current user.
  */
-inline auto GetConfigDir() -> Result<std::filesystem::path> {
+inline auto get_config_dir() -> result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
-  return GetEnv("APPDATA");
+  return get_env("APPDATA");
 #elif defined(__unix__) || defined(__linux__)
-  auto dir = GetEnv("XDG_CONFIG_HOME");
-  if (dir.IsOk()) {
+  auto dir = get_env("XDG_CONFIG_HOME");
+  if (dir) {
     return dir;
   }
-  dir = GetEnv("HOME");
-  if (dir.IsOk()) {
+  dir = get_env("HOME");
+  if (dir) {
     return std::filesystem::path(dir.Unwrap()) / ".config";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
-  auto dir = GetEnv("HOME");
-  if (dir.IsOk()) {
+  auto dir = get_env("HOME");
+  if (dir) {
     return std::filesystem::path(dir.Unwrap()) / "Library/Application Support";
   }
   return dir;
@@ -128,22 +101,22 @@ inline auto GetConfigDir() -> Result<std::filesystem::path> {
 /**
  * @brief Get the cache directory of current user.
  */
-inline auto GetCacheDir() -> Result<std::filesystem::path> {
+inline auto get_cache_dir() -> result<std::filesystem::path> {
 #if defined(_WIN32) || defined(_WIN64)
-  return GetEnv("LOCALAPPDATA");
+  return get_env("LOCALAPPDATA");
 #elif defined(__unix__) || defined(__linux__)
-  auto dir = GetEnv("XDG_CACHE_HOME");
-  if (dir.IsOk()) {
+  auto dir = get_env("XDG_CACHE_HOME");
+  if (dir) {
     return dir;
   }
-  dir = GetEnv("HOME");
-  if (dir.IsOk()) {
+  dir = get_env("HOME");
+  if (dir) {
     return std::filesystem::path(dir.Unwrap()) / ".cache";
   }
   return dir;
 #elif defined(TARGET_OS_MAC)
-  auto dir = GetEnv("HOME");
-  if (dir.IsOk()) {
+  auto dir = get_env("HOME");
+  if (dir) {
     return std::filesystem::path(dir.Unwrap()) / "Library/Caches";
   }
   return dir;
@@ -156,7 +129,7 @@ inline auto GetCacheDir() -> Result<std::filesystem::path> {
  * If it is a ordinary file, create the all directories in it's parent path and then create the
  * empty file. You can create std::path that store the directory path by `path /= ""`.
  */
-inline auto CreateFilePath(const std::filesystem::path& filepath) -> Result<void> {
+inline auto create_file_path(const std::filesystem::path& filepath) -> result<void> {
   auto err = std::error_code();
   auto result = std::filesystem::exists(filepath, err);
   if (err) {

@@ -1,175 +1,164 @@
 #pragma once
 
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <string>
+#include <any>
+#include <expected>
 #include <system_error>
 #include <type_traits>
-#include <variant>
 
 /**
- * @brief Provide std::make_error_code(ErrorCategory::Errc) for class ErrorCategory that implement
- * std::error_category. This macro only work in global namespace.
- *
+ * @brief Provide std::error_code make_error_code(error_category_derived::errc);
  */
-#define MAKE_ERROR_CODE(ErrorCategory)                                   \
-  inline auto make_error_code(ErrorCategory::Errc ec)->std::error_code { \
-    static auto err_cat = ErrorCategory();                               \
-    return {ec, err_cat};                                                \
+#define MAKE_ERROR_CODE(error_category_derived)                                   \
+  inline auto make_error_code(error_category_derived::errc ec)->std::error_code { \
+    static auto err_cat = error_category_derived();                               \
+    return {ec, err_cat};                                                         \
   }
 
-#define ERROR_CODE_ENUM(ErrorCategory)                           \
-  namespace std {                                                \
-  template <>                                                    \
-  struct is_error_code_enum<ErrorCategory::Errc> : true_type {}; \
+/**
+ * @brief Provide comparison function between error_category_derived::errc and std::error_code
+ */
+#define ERROR_CODE_ENUM(error_category_derived)                           \
+  namespace std {                                                         \
+  template <>                                                             \
+  struct is_error_code_enum<error_category_derived::errc> : true_type {}; \
   }  // namespace ascpp
 
 namespace ascpp {
 
-/**
- * @brief Used by Result<void>
- *
- */
-struct Void {};
-
-/**
- * @brief Wrap the result in order to force the user to handle error.
- *
- * @tparam T Wrapped result value type.
- */
-template <typename T>
-class [[nodiscard]] Result {
+class error : public std::error_category {
  public:
-  using ValueType = std::conditional_t<std::is_same_v<T, void>, Void, T>;
+  enum errc {
+    NO_ERROR,
+    GET_ENV_FAILED,
+    GET_EMPTY_ENV,
+    SET_ENV_FAILED,
+    CODECVT_FAILED,
+    INVALID_ARGUMENT,
+    OUT_OF_RANGE
+  };
 
-  /**
-   * @brief Default construct as default value of type T
-   *
-   */
-  Result() = default;
+  auto name() const noexcept -> const char* override { return "ascpp"; }
 
-  /**
-   * @brief Allow conversion from U that is convertible for T to Result<T>
-   */
-  template <typename U>
-    requires(std::is_convertible_v<U, ValueType>)
-  Result(U&& val) : var_(static_cast<ValueType>(std::forward<U>(val))) {}
-
-  /**
-   * @brief Allow conversion from Result<U> that U is convertible for T to Result<T>
-   */
-  template <typename U>
-    requires(std::is_convertible_v<U, ValueType>)
-  Result(Result<U> other_res) {
-    if (other_res.IsOk()) {
-      var_ = static_cast<ValueType>(std::move(other_res.Unwrap()));
-    } else {
-      var_ = other_res.UnwrapErr();
+  auto message(int ec) const -> std::string override {
+    switch (ec) {
+      case GET_ENV_FAILED:
+        return "get env failed";
+      case GET_EMPTY_ENV:
+        return "env value is empty";
+      case SET_ENV_FAILED:
+        return "set env failed";
+      case CODECVT_FAILED:
+        return "codecvt failed";
+      case INVALID_ARGUMENT:
+        return "invalid argument";
+      case OUT_OF_RANGE:
+        return "out of range";
+      default:
+        return "unkown error";
     }
   }
-
-  /**
-   * @brief Allow conversion from Result<void> to Result<T>, but not the other way around.
-   *
-   * If Result<void> is ERR, the constructed Result<T> will be the same ERR. If Result<void> is OK,
-   * the constructed Result<T> will be the default value of type T.
-   */
-  template <typename U>
-    requires(std::is_same_v<ValueType, Void>)
-  Result(const Result<U>& other_res) {
-    if (other_res.IsOk()) {
-      var_ = Void();
-    } else {
-      var_ = other_res.UnwrapErr();
-    }
-  }
-
-  /**
-   * @brief Allow conversion from std::error_code to Result<T>, then UnwrapErr will return the same
-   * err. If err is false, construct as the default value of type T
-   *
-   * @param err
-   */
-  Result(const std::error_code& err) {
-    if (err) {
-      var_ = err;
-    } else {
-      var_ = ValueType();
-    }
-  }
-
-  Result(Result&&) noexcept = default;
-  Result(const Result&) = default;
-  auto operator=(Result&&) noexcept -> Result& = default;
-  auto operator=(const Result&) -> Result& = default;
-  ~Result() = default;
-
-  auto IsOk() const -> bool { return var_.index() == 0; }
-
-  auto IsErr() const -> bool { return var_.index() != 0; }
-
-  template <typename Callable>
-  auto Match(Callable&& call) -> decltype(std::visit(std::forward<Callable>(call),
-                                                     std::variant<ValueType, std::error_code>())) {
-    return std::visit(std::forward<Callable>(call), var_);
-  }
-
-  auto Unwrap() const -> const ValueType& {
-    if (IsErr()) {
-      throw std::system_error(UnwrapErr());
-    }
-    return std::get<ValueType>(var_);
-  }
-
-  auto Unwrap() -> ValueType& {
-    return const_cast<ValueType&>(static_cast<const Result&>(*this).Unwrap());
-  }
-
-  template <typename U>
-    requires(std::is_convertible_v<U, ValueType>)
-  auto UnwrapOr(U&& default_value) const& -> ValueType {
-    return IsErr() ? static_cast<ValueType>(std::forward<U>(default_value))
-                   : std::get<ValueType>(var_);
-  }
-
-  template <typename U>
-    requires(std::is_convertible_v<U, ValueType>)
-  auto UnwrapOr(U&& default_value) && -> ValueType {
-    return IsErr() ? static_cast<ValueType>(std::forward<U>(default_value))
-                   : std::move(std::get<ValueType>(var_));
-  }
-
-  template <typename U>
-    requires(std::is_convertible_v<U, ValueType>)
-  auto UnwrapOrAssign(U&& default_value) -> ValueType& {
-    if (IsErr()) {
-      var_ = static_cast<ValueType>(std::forward<U>(default_value));
-    }
-    return std::get<ValueType>(var_);
-  }
-
-  auto UnwrapErr() const -> const std::error_code& { return std::get<std::error_code>(var_); }
-
- private:
-  std::variant<ValueType, std::error_code> var_;
 };
 
-#define OK(arg)  if constexpr (!std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
+MAKE_ERROR_CODE(error);
 
-#define ERR(arg) else if constexpr (std::is_same_v<std::decay_t<decltype(arg)>, std::error_code>)
+}  // namespace ascpp
+
+ERROR_CODE_ENUM(ascpp::error);
 
 /**
- * @brief Unwrap a result or return it to upper.
+ * @brief Try to get the result when is has value or return the error to upper.
  *
  */
-#define TRY_UNWRAP(...)              \
-  ({                                 \
-    auto _ascpp_res_ = __VA_ARGS__;  \
-    if (_ascpp_res_.IsErr()) {       \
-      return _ascpp_res_;            \
-    }                                \
-    std::move(_ascpp_res_.Unwrap()); \
+#if defined(__GNUC__) || defined(__clang__)
+#define TRY(...)                    \
+  ({                                \
+    auto _ascpp_res_ = __VA_ARGS__; \
+    if (!_ascpp_res_.has_value()) { \
+      return _ascpp_res_.error();   \
+    }                               \
+    std::move(_ascpp_res_.value()); \
   })
+#endif
+
+namespace ascpp {
+
+template <typename T, typename Base>
+  requires(!std::is_same_v<T, std::error_code>)
+class result_impl : public Base {
+  template <typename U>
+  using result = result_impl<U, std::expected<U, std::error_code>>;
+
+ public:
+  using base_type = Base;
+  using Base::Base;
+
+  result_impl(std::error_code ec) : Base(std::unexpected(ec)) {}
+
+  template <typename U>
+    requires(std::is_void_v<T>)
+  explicit result_impl(const result<U>& other) {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(other.error()));
+    }
+  }
+
+  template <typename U>
+    requires(std::is_void_v<T>)
+  explicit result_impl(result<U>&& other) {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(std::move(other.error())));
+    }
+  }
+
+  auto operator=(std::error_code ec) -> result_impl& {
+    Base::operator=(std::unexpected(ec));
+    return *this;
+  }
+
+  template <typename U>
+    requires(std::is_void_v<T>)
+  auto operator=(const result<U>& other) -> result_impl& {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(other.error()));
+    }
+    return *this;
+  }
+
+  template <typename U>
+    requires(std::is_void_v<T>)
+  auto operator=(result<U>&& other) -> result_impl& {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(std::move(other.error())));
+    }
+    return *this;
+  }
+
+  template <class T2>
+  friend constexpr auto operator==(const result_impl& lhs, const result<T2>& rhs) -> bool {
+    return static_cast<const base_type&>(lhs)
+           == static_cast<const typename result<T2>::base_type&>(rhs);
+  }
+
+  template <class T2>
+  friend constexpr auto operator==(const result_impl& x, const T2& val) -> bool {
+    return static_cast<const base_type&>(x) == val;
+  }
+
+  template <class E2>
+  friend constexpr auto operator==(const result_impl& x, const std::unexpected<E2>& e) -> bool {
+    return static_cast<const base_type&>(x) == e;
+  }
+};
+
+template <typename T>
+using result = result_impl<T, std::expected<T, std::error_code>>;
 
 }  // namespace ascpp

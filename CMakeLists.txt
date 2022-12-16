@@ -1,5 +1,5 @@
 # Project
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 project(ascpp VERSION 0.1)
 
 # Global compile options

@@ -6,30 +6,30 @@
 #include "gtest/gtest.h"
 
 TEST(TestMisc, GetAndSetEnv) {
-  EXPECT_EQ(ascpp::GetEnv("null").UnwrapErr(), ascpp::SysErr::GET_EMPTY_ENV);
+  EXPECT_EQ(ascpp::get_env("null").error(), ascpp::error::GET_EMPTY_ENV);
 
-  ascpp::SetEnv("empty", "");
-  EXPECT_EQ(ascpp::GetEnv("empty").UnwrapErr(), ascpp::SysErr::GET_EMPTY_ENV);
+  ascpp::set_env("empty", "");
+  EXPECT_EQ(ascpp::get_env("empty").error(), ascpp::error::GET_EMPTY_ENV);
 
-  ascpp::SetEnv("hello", "world");
-  EXPECT_EQ(ascpp::GetEnv("hello").Unwrap(), "world");
+  ascpp::set_env("hello", "world");
+  EXPECT_EQ(ascpp::get_env("hello").value(), "world");
 
-  ascpp::SetEnv("name with space", "value with space");
-  EXPECT_EQ(ascpp::GetEnv("name with space").Unwrap(), "value with space");
+  ascpp::set_env("name with space", "value with space");
+  EXPECT_EQ(ascpp::get_env("name with space").value(), "value with space");
 }
 
 TEST(TestDirectories, Directories) {
-  std::clog << "GetHomeDir()    : " << ascpp::GetHomeDir().Unwrap() << std::endl;
-  std::clog << "GetConfigDir()  : " << ascpp::GetConfigDir().Unwrap() << std::endl;
-  std::clog << "GetCacheDir()   : " << ascpp::GetCacheDir().Unwrap() << std::endl;
+  std::clog << "GetHomeDir()    : " << ascpp::get_home_dir().value() << std::endl;
+  std::clog << "GetConfigDir()  : " << ascpp::get_config_dir().value() << std::endl;
+  std::clog << "GetCacheDir()   : " << ascpp::get_cache_dir().value() << std::endl;
 
-  auto dirpath = ascpp::GetCacheDir().Unwrap() / "ascpp" / "";
+  auto dirpath = ascpp::get_cache_dir().value() / "ascpp" / "";
   std::filesystem::remove_all(dirpath);
   std::clog << "CreateFilePath(): " << dirpath << std::endl;
-  ascpp::CreateFilePath(dirpath);
+  ascpp::create_file_path(dirpath);
 
-  auto filepath = ascpp::GetCacheDir().Unwrap() / "ascpp" / "file.txt";
+  auto filepath = ascpp::get_cache_dir().value() / "ascpp" / "file.txt";
   std::filesystem::remove(filepath);
   std::clog << "CreateFilePath(): " << filepath << std::endl;
-  ascpp::CreateFilePath(filepath);
+  ascpp::create_file_path(filepath);
 }

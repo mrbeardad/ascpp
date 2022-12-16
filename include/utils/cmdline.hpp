@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vcruntime.h>
 #include <algorithm>
 #include <any>
 #include <array>
@@ -37,7 +36,7 @@ concept single_option
       || std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::string>;
 
 template <typename T>
-concept multi_option = is_specialization_v<std::vector, T> && single_option<typename T::value_type>;
+concept multi_option = is_specialization_v<T, std::vector> && single_option<typename T::value_type>;
 
 template <typename T>
 concept option_type = single_option<T> || multi_option<T>;
@@ -552,25 +551,25 @@ class cmdline {
           break;
         }
         case option::S_INT: {
-          auto value = opt_value.empty() ? 0 : to_int(opt_value);
+          auto value = opt_value.empty() ? 0 : to_number<int>(opt_value).value();
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
         case option::S_SIZE: {
-          auto value = opt_value.empty() ? 0UZ : static_cast<size_t>(to_ull(opt_value));
+          auto value = opt_value.empty() ? 0UZ : to_number<size_t>(opt_value).value();
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
         case option::S_FLOAT: {
-          auto value = opt_value.empty() ? 0.0F : to_float(opt_value);
+          auto value = opt_value.empty() ? 0.0F : to_number<float>(opt_value).value();
           throw_when_invalid(value);
           opt.result_value = value;
           break;
         }
         case option::S_DOUBLE: {
-          auto value = opt_value.empty() ? 0.0 : to_double(opt_value);
+          auto value = opt_value.empty() ? 0.0 : to_number<double>(opt_value).value();
           throw_when_invalid(value);
           opt.result_value = value;
           break;
@@ -593,7 +592,7 @@ class cmdline {
           auto vec = std::vector<int>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto sv = std::string_view(word.begin(), word.end());
-            auto value = sv.empty() ? 0 : to_int(sv);
+            auto value = sv.empty() ? 0 : to_number<int>(sv).value();
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -604,7 +603,7 @@ class cmdline {
           auto vec = std::vector<size_t>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto sv = std::string_view(word.begin(), word.end());
-            auto value = sv.empty() ? 0UZ : static_cast<size_t>(to_ull(sv));
+            auto value = sv.empty() ? 0UZ : to_number<size_t>(sv).value();
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -615,7 +614,7 @@ class cmdline {
           auto vec = std::vector<float>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto s = std::string(word.begin(), word.end());
-            auto value = s.empty() ? 0.0F : to_float(s);
+            auto value = s.empty() ? 0.0F : to_number<float>(s).value();
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
@@ -626,7 +625,7 @@ class cmdline {
           auto vec = std::vector<double>();
           for (auto word : std::views::split(opt_value, ","s)) {
             auto s = std::string(word.begin(), word.end());
-            auto value = s.empty() ? 0.0 : to_double(s);
+            auto value = s.empty() ? 0.0 : to_number<double>(s).value();
             throw_when_invalid(value);
             vec.emplace_back(value);
           }
