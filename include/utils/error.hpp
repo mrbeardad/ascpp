@@ -1,6 +1,5 @@
 #pragma once
 
-#include <any>
 #include <expected>
 #include <system_error>
 #include <type_traits>

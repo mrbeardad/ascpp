@@ -14,6 +14,8 @@
 
 #include "app.hpp"
 
+// NOLINTBEGIN(modernize-use-trailing-return-type,bugprone-narrowing-conversions)
+
 TEST(TestCmdline, GetType) {
   EXPECT_EQ(ascpp::option::get_type<bool>(), ascpp::option::S_BOOL);
   EXPECT_EQ(ascpp::option::get_type<int>(), ascpp::option::S_INT);
@@ -1116,3 +1118,5 @@ TEST(TestCmdline, MultiOpt) {
   vs = {"", "1", "2", "3", "", ""};
   EXPECT_EQ(cmd.get_value<std::vector<std::string>>("s"), vs);
 }
+
+// NOLINTEND(modernize-use-trailing-return-type,bugprone-narrowing-conversions)

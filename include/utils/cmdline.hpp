@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cstddef>
 #include <exception>
+#include <format>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -20,9 +21,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-
-#include "fmt/core.h"
-#include "fmt/format.h"
 
 #include "app/info.hpp"
 #include "utils/cmdline.hpp"
@@ -179,14 +177,14 @@ class option_adder {
   auto with_default(T default_value) -> option_adder& {
     if constexpr (single_option<T>) {
       if (!opt_->check_value(default_value)) {
-        throw std::logic_error(fmt::format("the default value is invalid for {} option '{}' : {}",
+        throw std::logic_error(std::format("the default value is invalid for {} option '{}' : {}",
                                            option::type_to_str(opt_->opt_type), opt_->long_opt,
                                            default_value));
       }
     } else {
       if (auto itr = opt_->check_value(default_value); itr != default_value.end()) {
         throw std::logic_error(
-            fmt::format("the value in default values is invalid for {} option '{}': {}",
+            std::format("the value in default values is invalid for {} option '{}': {}",
                         option::type_to_str(opt_->opt_type), opt_->long_opt, *itr));
       }
     }
@@ -197,14 +195,14 @@ class option_adder {
   auto with_implicit(T implicit_value) -> option_adder& {
     if constexpr (single_option<T>) {
       if (!opt_->check_value(implicit_value)) {
-        throw std::logic_error(fmt::format("the implicit value is invalid for {} option '{}' : {}",
+        throw std::logic_error(std::format("the implicit value is invalid for {} option '{}' : {}",
                                            option::type_to_str(opt_->opt_type), opt_->long_opt,
                                            implicit_value));
       }
     } else {
       if (auto itr = opt_->check_value(implicit_value); itr != implicit_value.end()) {
         throw std::logic_error(
-            fmt::format("the value in implicit values is invalid for {} option '{}': {}",
+            std::format("the value in implicit values is invalid for {} option '{}': {}",
                         option::type_to_str(opt_->opt_type), opt_->long_opt, *itr));
       }
     }
@@ -279,16 +277,16 @@ class cmdline {
     auto longopt_str = [](option& opt) {
       auto ret = ""s;
       if (!opt.implicit_value.has_value()) {
-        ret = fmt::format("--{}=<{}>", opt.long_opt, option::type_to_str(opt.opt_type));
+        ret = std::format("--{}=<{}>", opt.long_opt, option::type_to_str(opt.opt_type));
       } else if (opt.opt_type != option::S_BOOL) {
-        ret = fmt::format("--{}[=<{}>]", opt.long_opt, option::type_to_str(opt.opt_type));
+        ret = std::format("--{}[=<{}>]", opt.long_opt, option::type_to_str(opt.opt_type));
       } else {
-        ret = fmt::format("--{}", opt.long_opt);
+        ret = std::format("--{}", opt.long_opt);
       }
       return ret;
     };
 
-    auto ret = fmt::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->app_name(),
+    auto ret = std::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->app_name(),
                            app_info_->app_version(), app_info_->app_intro(), app_info_->app_name());
     if (!nonopt_name_.empty()) {
       ret += "[--] ";
@@ -327,9 +325,13 @@ class cmdline {
       opt_name += longopt_str(opt);
       opt_name_col->emplace_back(opt_name);
 
-      auto width = fmt::detail::compute_width(opt_name);
-      max_width_of_opt_name_col = std::max(max_width_of_opt_name_col, width);
-      opt_name_col_width->emplace_back(width);
+      auto width = display_width(opt_name);
+      if (width) {
+        max_width_of_opt_name_col = std::max(max_width_of_opt_name_col, *width);
+        opt_name_col_width->emplace_back(*width);
+      } else {
+        opt_name_col_width->emplace_back(0);
+      }
 
       opt_desc_col->emplace_back(&opt.opt_desc);
     }
@@ -338,7 +340,10 @@ class cmdline {
       ret += "REQUIRED OPTIONS:\n";
       for (auto i = 0UZ; i < required_opt_name_col.size(); ++i) {
         ret += required_opt_name_col[i]
-               + std::string(max_width_of_opt_name_col - required_opt_name_col_width[i], ' ');
+               + std::string(required_opt_name_col_width[i] != 0
+                                 ? max_width_of_opt_name_col - required_opt_name_col_width[i]
+                                 : 1,
+                             ' ');
         ret += "\t-- " + *required_opt_desc_col[i] + "\n";
       }
       ret += "\n";
@@ -376,17 +381,17 @@ class cmdline {
         auto opt_name = this_arg.substr(2, es_pos - 2);
 
         if (search_idx_.find(opt_name) == search_idx_.end()) {
-          throw std::runtime_error(fmt::format("no option '{}'", opt_name));
+          throw std::runtime_error(std::format("no option '{}'", opt_name));
         }
         if (opt_name.size() < 2) {
-          throw std::runtime_error(fmt::format("wrong form for short option '{}'", this_arg));
+          throw std::runtime_error(std::format("wrong form for short option '{}'", this_arg));
         }
 
         if (es_pos == std::string::npos) {
           // form: --option [value]
           if (!has_implicit(opt_name)) {
             if (i + 1 >= argc) {
-              throw std::runtime_error(fmt::format("requires a value for option '{}'", opt_name));
+              throw std::runtime_error(std::format("requires a value for option '{}'", opt_name));
             }
             set_value(opt_name, argv[++i]);
           } else {
@@ -406,13 +411,13 @@ class cmdline {
           auto cur_opt = std::string{this_arg[j]};
           auto opt_idx = search_idx_.find(cur_opt);
           if (opt_idx == search_idx_.end()) {
-            throw std::runtime_error(fmt::format("no option '{}'", cur_opt));
+            throw std::runtime_error(std::format("no option '{}'", cur_opt));
           }
           if (!has_implicit(cur_opt)) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt value
               if (i + 1 >= argc) {
-                throw std::runtime_error(fmt::format("requires a value for option '{}'", cur_opt));
+                throw std::runtime_error(std::format("requires a value for option '{}'", cur_opt));
               }
               set_value(cur_opt, argv[++i]);
             } else {
@@ -450,7 +455,7 @@ class cmdline {
     for (auto& opt : options_) {
       if (!opt.result_value.has_value()) {
         if (!opt.default_value.has_value()) {
-          throw std::runtime_error(fmt::format("requires option '{}'", opt.long_opt));
+          throw std::runtime_error(std::format("requires option '{}'", opt.long_opt));
         }
         opt.result_value = opt.default_value;
       }
@@ -481,11 +486,11 @@ class cmdline {
   auto check_optname(char opt_name) const -> void {
     auto str_opt = std::string{opt_name};
     if (search_idx_.find(str_opt) != search_idx_.end()) {
-      throw std::logic_error(fmt::format("duplicate option '{}'", str_opt));
+      throw std::logic_error(std::format("duplicate option '{}'", str_opt));
     }
     if (!std::isgraph(opt_name)) {
-      throw std::logic_error(fmt::format("short option name must be a graphical character: '{}'",
-                                         debug_string_ansi_graph(str_opt)));
+      throw std::logic_error(
+          std::format("short option name must be a graphical character: '{}'", str_opt));
     }
     if (opt_name == '-') {
       throw std::logic_error("short option name could not be '-'");
@@ -494,15 +499,15 @@ class cmdline {
 
   auto check_optname(const std::string& opt_name) const -> void {
     if (search_idx_.find(opt_name) != search_idx_.end()) {
-      throw std::logic_error(fmt::format("duplicate option '{}'", opt_name));
+      throw std::logic_error(std::format("duplicate option '{}'", opt_name));
     }
     if (opt_name.size() <= 2) {
       throw std::logic_error(
-          fmt::format("long option name requires at least 2 character: '{}'", opt_name));
+          std::format("long option name requires at least 2 character: '{}'", opt_name));
     }
-    if (auto debug = debug_string_ansi_graph(opt_name); debug != opt_name) {
+    if (!std::ranges::all_of(opt_name, ::isgraph)) {
       throw std::logic_error(
-          fmt::format("characters in long option name must be graphical: '{}'", debug));
+          std::format("characters in long option name must be graphical: '{}'", opt_name));
     }
     if (opt_name.find('=') != std::string::npos) {
       throw std::logic_error("long option name could not contain '='");
@@ -519,12 +524,12 @@ class cmdline {
     auto throw_when_invalid = [&opt_name, &opt_value, &opt]<typename T>(const T& value) {
       if constexpr (multi_option<T>) {
         if (auto itr = opt.check_value(value); itr != value.end()) {
-          throw std::logic_error(fmt::format("invalid value for {} option '{}': {}",
+          throw std::logic_error(std::format("invalid value for {} option '{}': {}",
                                              option::type_to_str(opt.opt_type), opt_name, *itr));
         }
       } else {
         if (!opt.check_value(value)) {
-          throw std::logic_error(fmt::format("invalid value for {} option '{}': {}",
+          throw std::logic_error(std::format("invalid value for {} option '{}': {}",
                                              option::type_to_str(opt.opt_type), opt_name,
                                              opt_value));
         }
@@ -540,7 +545,7 @@ class cmdline {
         return false;
       }
       throw std::runtime_error(
-          fmt::format("invalid value for bool option '{}': {}", opt_name, opt_value));
+          std::format("invalid value for bool option '{}': {}", opt_name, opt_value));
     };
 
     try {
@@ -644,10 +649,10 @@ class cmdline {
         }
       }
     } catch (const std::invalid_argument& ex) {
-      throw std::runtime_error(fmt::format("invalid value format for {} option '{}': {}",
+      throw std::runtime_error(std::format("invalid value format for {} option '{}': {}",
                                            option::type_to_str(opt.opt_type), opt_name, opt_value));
     } catch (const std::out_of_range& ex) {
-      throw std::runtime_error(fmt::format("the value is out of range for {} option '{}': {}",
+      throw std::runtime_error(std::format("the value is out of range for {} option '{}': {}",
                                            option::type_to_str(opt.opt_type), opt_name, opt_value));
     }
   }

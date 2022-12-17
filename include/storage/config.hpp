@@ -12,7 +12,6 @@
 #include <string>
 #include <system_error>
 
-#include "fmt/chrono.h"
 #include "nlohmann/json.hpp"
 
 #include "app/info.hpp"

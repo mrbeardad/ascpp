@@ -4,6 +4,8 @@
 
 #include "gtest/gtest.h"
 
+// NOLINTBEGIN(modernize-use-trailing-return-type)
+
 class myerror : public std::error_category {
  public:
   enum errc { NO_ERR, BAD_ERR };
@@ -62,11 +64,7 @@ TEST(TestError, ResultConstructorAndAssignment) {
   r1 = debug{2};
   EXPECT_EQ(r1->val, 2);
 
-  // ascpp::result<debug>({1,1}) no match constructor
-  auto r2 = ascpp::result<debug>({1});
-  EXPECT_EQ(r2->val, 1);
-  r2 = {2};
-  EXPECT_EQ(r2->val, 2);
+  // ascpp::result<debug>({1, 1}) no match constructor
 
   auto r3 = ascpp::result<debug>(1);
   EXPECT_EQ(r3->val, 1);
@@ -97,9 +95,14 @@ TEST(TestError, ResultConstructorAndAssignment) {
 
 TEST(TestError, ResultComparsion) {
   EXPECT_EQ(ascpp::result<debug>(1), debug{1});
+  EXPECT_EQ(ascpp::result<debug>(1), 1);
+  EXPECT_EQ(debug{1}, ascpp::result<debug>(1));
+  EXPECT_EQ(1, ascpp::result<debug>(1));
+
   EXPECT_EQ(ascpp::result<debug>(1), ascpp::result<debug>(1));
   EXPECT_EQ(ascpp::result<debug>(1), ascpp::result<int>(1));
   EXPECT_EQ(ascpp::result<int>(1), ascpp::result<debug>(1));
+
   EXPECT_NE(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)), ascpp::result<debug>(1));
   EXPECT_NE(ascpp::result<debug>(1), ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
   EXPECT_EQ(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)),
@@ -119,3 +122,5 @@ TEST(TestError, TryUnwrap) {
   EXPECT_EQ(err, get_error_result());
 }
 #endif
+
+// NOLINTEND(modernize-use-trailing-return-type)

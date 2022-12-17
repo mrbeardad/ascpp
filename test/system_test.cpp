@@ -1,9 +1,12 @@
 #include "utils/system.hpp"
+
 #include <filesystem>
 #include <iostream>
 #include <ostream>
 
 #include "gtest/gtest.h"
+
+// NOLINTBEGIN(modernize-use-trailing-return-type)
 
 TEST(TestMisc, GetAndSetEnv) {
   EXPECT_EQ(ascpp::get_env("null").error(), ascpp::error::GET_EMPTY_ENV);
@@ -33,3 +36,5 @@ TEST(TestDirectories, Directories) {
   std::clog << "CreateFilePath(): " << filepath << std::endl;
   ascpp::create_file_path(filepath);
 }
+
+// NOLINTEND(modernize-use-trailing-return-type)

@@ -6,8 +6,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_compile_definitions(asio INTERFACE ASIO_HAS_IO_URING=1)
 endif()
 
-# (fmt::fmt)
-add_subdirectory(fmt) # TODO: migrate to std::format when it is mature enough
+# (utf::utf)
+add_library(utf INTERFACE)
+add_library(utf::utf ALIAS utf)
+target_include_directories(utf INTERFACE utf_cpp/include)
 
 # (nlohmann_json::nlohmann_json)
 add_subdirectory(nlohmannjson)

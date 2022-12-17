@@ -1,7 +1,7 @@
 add_library(ascpp INTERFACE)
 add_library(ascpp::ascpp ALIAS ascpp)
 target_include_directories(ascpp INTERFACE .)
-target_link_libraries(ascpp INTERFACE asio::asio fmt::fmt-header-only
+target_link_libraries(ascpp INTERFACE asio::asio utf::utf
                                       nlohmann_json::nlohmann_json)
 
 file(
