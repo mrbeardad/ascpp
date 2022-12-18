@@ -16,28 +16,6 @@ TEST(TestMisc, IsSpecialization) {
   EXPECT_TRUE(b);
 }
 
-TEST(TestMisc, UtfCvt) {
-  EXPECT_EQ(ascpp::utf_conv<char>("你tnd真是个人才🤡"), "你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char>(L"你tnd真是个人才🤡"), "你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char>(U"你tnd真是个人才🤡"), "你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char>(u"你tnd真是个人才🤡"), "你tnd真是个人才🤡");
-
-  EXPECT_EQ(ascpp::utf_conv<wchar_t>("你tnd真是个人才🤡"), L"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<wchar_t>(L"你tnd真是个人才🤡"), L"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<wchar_t>(U"你tnd真是个人才🤡"), L"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<wchar_t>(u"你tnd真是个人才🤡"), L"你tnd真是个人才🤡");
-
-  EXPECT_EQ(ascpp::utf_conv<char16_t>("你tnd真是个人才🤡"), u"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char16_t>(L"你tnd真是个人才🤡"), u"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char16_t>(U"你tnd真是个人才🤡"), u"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char16_t>(u"你tnd真是个人才🤡"), u"你tnd真是个人才🤡");
-
-  EXPECT_EQ(ascpp::utf_conv<char32_t>("你tnd真是个人才🤡"), U"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char32_t>(L"你tnd真是个人才🤡"), U"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char32_t>(U"你tnd真是个人才🤡"), U"你tnd真是个人才🤡");
-  EXPECT_EQ(ascpp::utf_conv<char32_t>(u"你tnd真是个人才🤡"), U"你tnd真是个人才🤡");
-}
-
 TEST(TestMisc, DisplayWidth) {
   EXPECT_EQ(ascpp::display_width(U'\0'), 0);
   EXPECT_EQ(ascpp::display_width(U'\u0300'), 0);
@@ -53,7 +31,6 @@ TEST(TestMisc, DisplayWidth) {
 
   EXPECT_EQ(ascpp::display_width("你tnd真是个人才🤡"), 17);
   EXPECT_EQ(ascpp::display_width(L"你tnd真是个人才🤡"), 17);
-  EXPECT_EQ(ascpp::display_width(u"你tnd真是个人才🤡"), 17);
   EXPECT_EQ(ascpp::display_width(U"你tnd真是个人才🤡"), 17);
 }
 

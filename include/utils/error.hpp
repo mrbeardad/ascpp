@@ -64,11 +64,11 @@ MAKE_ERROR_CODE(error);
 
 ERROR_CODE_ENUM(ascpp::error);
 
+#if defined(__GNUC__) || defined(__clang__)
 /**
- * @brief Try to get the result when is has value or return the error to upper.
+ * @brief Try to get the result when it has value or return the error to upper.
  *
  */
-#if defined(__GNUC__) || defined(__clang__)
 #define TRY(...)                    \
   ({                                \
     auto _ascpp_res_ = __VA_ARGS__; \

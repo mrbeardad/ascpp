@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vcruntime.h>
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -16,9 +15,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "ww898/utf_converters.hpp"
-
 #include "utils/error.hpp"
+#include "utils/utf.hpp"
 
 using std::string_literals::operator""s;        // NOLINT
 using std::string_view_literals::operator""sv;  // NOLINT
@@ -39,25 +37,6 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
 
 template <typename Test, template <typename...> class Ref>
 constexpr bool is_specialization_v = is_specialization<Test, Ref>::value;
-
-template <typename ToCharT, typename FromCharT>
-auto utf_conv(std::basic_string_view<FromCharT> from) -> result<std::basic_string<ToCharT>> {
-  try {
-    return ww898::utf::conv<ToCharT>(from);
-  } catch (...) {
-    return make_error_code(error::INVALID_ARGUMENT);
-  }
-}
-
-template <typename ToCharT, typename FromCharT>
-auto utf_conv(const std::basic_string<FromCharT>& from) -> result<std::basic_string<ToCharT>> {
-  return utf_conv<ToCharT>(std::basic_string_view<FromCharT>(from));
-}
-
-template <typename ToCharT, typename FromCharT>
-auto utf_conv(const FromCharT* from) -> result<std::basic_string<ToCharT>> {
-  return utf_conv<ToCharT>(std::basic_string_view<FromCharT>(from));
-}
 
 inline auto display_width(char32_t ucs) -> result<size_t> {
   // sorted list of non-overlapping intervals of non-spacing characters
@@ -177,14 +156,6 @@ inline auto display_width(std::string_view str) -> result<size_t> {
 }
 
 inline auto display_width(std::wstring_view str) -> result<size_t> {
-  auto ustr = utf_conv<char32_t>(str);
-  if (!ustr) {
-    return ustr.error();
-  }
-  return display_width(*ustr);
-}
-
-inline auto display_width(std::u16string_view str) -> result<size_t> {
   auto ustr = utf_conv<char32_t>(str);
   if (!ustr) {
     return ustr.error();

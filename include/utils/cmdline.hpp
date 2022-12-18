@@ -264,11 +264,11 @@ class cmdline {
   }
 
   auto get_option(const std::string& long_opt) -> const option& {
-    return options_.at(search_idx_.at(long_opt));
+    return options_[search_idx_.at(long_opt)];
   }
 
   auto get_option(char short_opt) -> const option& {
-    return options_.at(search_idx_.at({short_opt}));
+    return options_[search_idx_.at(std::string{short_opt})];
   }
 
   auto help_string() -> std::string {
@@ -394,7 +394,7 @@ class cmdline {
             }
             set_value(opt_name, argv[++i]);
           } else {
-            auto& opt = options_.at(search_idx_.at(opt_name));
+            auto& opt = options_[search_idx_[opt_name]];
             opt.result_value = opt.implicit_value;
           }
         } else {
@@ -424,10 +424,10 @@ class cmdline {
               set_value(cur_opt, this_arg.substr(j + 1));
               break;
             }
-          } else if (options_.at(search_idx_.at(cur_opt)).opt_type != option::S_BOOL) {
+          } else if (options_[search_idx_[cur_opt]].opt_type != option::S_BOOL) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt
-              auto& opt = options_.at(search_idx_.at(cur_opt));
+              auto& opt = options_[search_idx_[cur_opt]];
               opt.result_value = opt.implicit_value;
             } else {
               // form: -optvlaue
@@ -435,7 +435,7 @@ class cmdline {
               break;
             }
           } else {
-            auto& opt = options_.at(search_idx_.at(cur_opt));
+            auto& opt = options_[search_idx_[cur_opt]];
             opt.result_value = opt.implicit_value;
           }
         }
@@ -471,7 +471,7 @@ class cmdline {
 
   template <option_type T>
   auto get_value(const std::string& opt_name) -> const T& {
-    return std::any_cast<T&>(options_.at(search_idx_.at(opt_name)).result_value);
+    return std::any_cast<T&>(options_[search_idx_.at(opt_name)].result_value);
   }
 
   template <option_type T>
@@ -487,7 +487,7 @@ class cmdline {
     if (search_idx_.find(str_opt) != search_idx_.end()) {
       throw std::logic_error(std::format("duplicate option '{}'", str_opt));
     }
-    if (!std::isgraph(opt_name)) {
+    if (!std::isgraph(static_cast<unsigned char>(opt_name))) {
       throw std::logic_error(
           std::format("short option name must be a graphical character: '{}'", str_opt));
     }
@@ -504,7 +504,8 @@ class cmdline {
       throw std::logic_error(
           std::format("long option name requires at least 2 character: '{}'", opt_name));
     }
-    if (!std::ranges::all_of(opt_name, ::isgraph)) {
+    if (!std::ranges::all_of(opt_name,
+                             [](char c) { return std::isgraph(static_cast<unsigned char>(c)); })) {
       throw std::logic_error(
           std::format("characters in long option name must be graphical: '{}'", opt_name));
     }
@@ -514,11 +515,11 @@ class cmdline {
   }
 
   auto has_implicit(const std::string& opt_name) -> bool {
-    return options_.at(search_idx_.at(opt_name)).implicit_value.has_value();
+    return options_[search_idx_[opt_name]].implicit_value.has_value();
   }
 
   auto set_value(const std::string& opt_name, std::string opt_value) -> void {
-    auto& opt = options_.at(search_idx_.at(opt_name));
+    auto& opt = options_[search_idx_[opt_name]];
 
     auto throw_when_invalid = [&opt_name, &opt_value, &opt]<typename T>(const T& value) {
       if constexpr (multi_option<T>) {

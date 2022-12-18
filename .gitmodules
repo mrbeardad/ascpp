@@ -7,6 +7,3 @@
 [submodule "3rd_party/nlohmannjson"]
 	path = 3rd_party/nlohmannjson
 	url = https://github.com/nlohmann/json
-[submodule "3rd_party/utf_cpp"]
-	path = 3rd_party/utf_cpp
-	url = https://github.com/ww898/utf-cpp
