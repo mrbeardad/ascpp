@@ -40,6 +40,10 @@ TEST(TestMisc, UtfCvt) {
 
 TEST(TestMisc, DisplayWidth) {
   EXPECT_EQ(ascpp::display_width(U'\0'), 0);
+  EXPECT_EQ(ascpp::display_width(U'\u0300'), 0);
+  EXPECT_EQ(ascpp::display_width(U'\u036F'), 0);
+  EXPECT_EQ(ascpp::display_width(U'\U000E0100'), 0);
+  EXPECT_EQ(ascpp::display_width(U'\U000E01EF'), 0);
   EXPECT_EQ(ascpp::display_width(U'a'), 1);
   EXPECT_EQ(ascpp::display_width(U'你'), 2);
   EXPECT_EQ(ascpp::display_width(U'🤡'), 2);
@@ -203,6 +207,9 @@ TEST(TestMisc, ToFloat) {
                   std::numeric_limits<float>::lowest());
   EXPECT_FLOAT_EQ(ascpp::to_number<float>("1.175494351e-38").value(),
                   std::numeric_limits<float>::min());
+  EXPECT_FLOAT_EQ(ascpp::to_number<float>("1.175494351e-39").value(), 1.175494351e-39);
+  EXPECT_FALSE(ascpp::to_number<float>("3.402823466e+39").has_value());
+  EXPECT_FALSE(ascpp::to_number<float>("-3.402823466e+39").has_value());
   EXPECT_EQ(ascpp::to_number<float>("inf").value(), std::numeric_limits<float>::infinity());
   EXPECT_EQ(ascpp::to_number<float>("-inf").value(), -std::numeric_limits<float>::infinity());
   EXPECT_TRUE(std::isnan(ascpp::to_number<float>("nan").value()));
@@ -228,6 +235,9 @@ TEST(TestMisc, ToFloat) {
                   std::numeric_limits<float>::lowest());
   EXPECT_FLOAT_EQ(ascpp::to_number<float>(L"1.175494351e-38").value(),
                   std::numeric_limits<float>::min());
+  EXPECT_FLOAT_EQ(ascpp::to_number<float>(L"1.175494351e-39").value(), 1.175494351e-39);
+  EXPECT_FALSE(ascpp::to_number<float>(L"3.402823466e+39").has_value());
+  EXPECT_FALSE(ascpp::to_number<float>(L"-3.402823466e+39").has_value());
   EXPECT_EQ(ascpp::to_number<float>(L"inf").value(), std::numeric_limits<float>::infinity());
   EXPECT_EQ(ascpp::to_number<float>(L"-inf").value(), -std::numeric_limits<float>::infinity());
   EXPECT_TRUE(std::isnan(ascpp::to_number<float>(L"nan").value()));

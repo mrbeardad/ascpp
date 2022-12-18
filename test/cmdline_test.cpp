@@ -12,7 +12,7 @@
 
 #include "gtest/gtest.h"
 
-#include "app.hpp"
+#include "app_info.hpp"
 
 // NOLINTBEGIN(modernize-use-trailing-return-type,bugprone-narrowing-conversions)
 
@@ -287,7 +287,7 @@ TEST(TestCmdline, AddMultiOptions) {
 }
 
 TEST(TestCmdline, AddBadOptions) {
-  auto cmd = ascpp::cmdline{&info};
+  auto cmd = ascpp::cmdline(&info);
   cmd.add_option<bool>('o', "option", "normal option");
 
   EXPECT_ANY_THROW(cmd.add_option<bool>("option", "duplicate long option name"));

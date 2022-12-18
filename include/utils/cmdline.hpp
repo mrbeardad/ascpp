@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "app/info.hpp"
-#include "utils/cmdline.hpp"
 #include "utils/misc.hpp"
 
 namespace ascpp {
@@ -96,11 +95,10 @@ struct option {
     }
   }
 
-  static inline auto type_to_str(type type) -> const char* {
-    static auto map
-        = std::array{"bool",           "int",           "size_t",         "float",
-                     "double",         "string",        "list of bool",   "list of int",
-                     "list of size_t", "list of float", "list of double", "list of string"};
+  static constexpr auto type_to_str(type type) -> const char* {
+    auto map = std::array{"bool",           "int",           "size_t",         "float",
+                          "double",         "string",        "list of bool",   "list of int",
+                          "list of size_t", "list of float", "list of double", "list of string"};
     return map[static_cast<size_t>(type)];
   }
 
@@ -360,6 +358,7 @@ class cmdline {
     return ret;
   }
 
+  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
   auto parse_args(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
     for (auto& opt : options_) {
       opt.result_value.reset();
@@ -477,7 +476,7 @@ class cmdline {
 
   template <option_type T>
   auto get_value(char opt_name) -> const T& {
-    return get_value<T>({opt_name});
+    return get_value<T>(std::string{opt_name});
   }
 
   auto get_nonoptions() -> const std::vector<std::string>& { return nonoptions_; }
