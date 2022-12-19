@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <stdexcept>
 #include <system_error>
 #include <type_traits>
 
@@ -81,14 +82,27 @@ ERROR_CODE_ENUM(ascpp::error);
 
 namespace ascpp {
 
+class result_error : public std::runtime_error {
+ public:
+  explicit result_error(std::error_code ec) : std::runtime_error(ec.message()), ec_(ec) {}
+
+  auto code() const -> const std::error_code& { return ec_; }
+
+ private:
+  std::error_code ec_;
+};
+
+struct void_result {};
+
 template <typename T, typename Base>
   requires(!std::is_same_v<T, std::error_code>)
-class result_impl : public Base {
+class [[nodiscard]] result_impl : public Base {
   template <typename U>
   using result = result_impl<U, std::expected<U, std::error_code>>;
 
  public:
   using base_type = Base;
+  using value_type = std::conditional_t<std::is_void_v<T>, void_result, T>;
   using Base::Base;
 
   result_impl(std::error_code ec) : Base(std::unexpected(ec)) {}
@@ -140,6 +154,34 @@ class result_impl : public Base {
     return *this;
   }
 
+  [[nodiscard]] auto value() & -> value_type& {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<Base&>(*this).value();
+  }
+
+  [[nodiscard]] auto value() const& -> const value_type& {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<const Base&>(*this).value();
+  }
+
+  [[nodiscard]] auto value() && -> value_type&& {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<Base&&>(*this).value();
+  }
+
+  [[nodiscard]] auto value() const&& -> const value_type&& {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<const Base&&>(*this).value();
+  }
+
   template <class T2>
   friend constexpr auto operator==(const result_impl& lhs, const result<T2>& rhs) -> bool {
     return static_cast<const base_type&>(lhs)
@@ -158,6 +200,8 @@ class result_impl : public Base {
 };
 
 template <typename T>
-using result = result_impl<T, std::expected<T, std::error_code>>;
+using result = result_impl<
+    T,
+    std::expected<std::conditional_t<std::is_void_v<T>, void_result, T>, std::error_code>>;
 
 }  // namespace ascpp

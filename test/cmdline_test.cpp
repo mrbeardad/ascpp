@@ -7,7 +7,9 @@
 #include <limits>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -32,18 +34,18 @@ TEST(TestCmdline, GetType) {
 }
 
 TEST(TestCmdline, TypeToStr) {
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_BOOL), "bool");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_INT), "int");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_SIZE), "size_t");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_FLOAT), "float");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_DOUBLE), "double");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::S_STRING), "string");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_BOOL), "list of bool");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_INT), "list of int");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_SIZE), "list of size_t");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_FLOAT), "list of float");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_DOUBLE), "list of double");
-  EXPECT_EQ(ascpp::option::type_to_str(ascpp::option::M_STRING), "list of string");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_BOOL), "bool");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_INT), "int");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_SIZE), "size_t");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_FLOAT), "float");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_DOUBLE), "double");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_STRING), "string");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_BOOL), "list of bool");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_INT), "list of int");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_SIZE), "list of size_t");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_FLOAT), "list of float");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_DOUBLE), "list of double");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_STRING), "list of string");
 }
 
 TEST(TestCmdline, CheckValue) {
@@ -333,7 +335,7 @@ TEST(TestCmdline, BasicParse) {
   cmd.add_option<std::string>('r', "required",
                               "short option without implicit value requires a value")
       .with_default("default");
-  cmd.allow_nonoptions("nonopts", false);
+  cmd.allow_nonoptions("nonopts", true);
 
   args = {"ascpp"};
   cmd.parse_args(args.size(), args.data());
@@ -505,7 +507,7 @@ TEST(TestCmdline, BoolOption) {
   auto args = std::vector<const char*>();
 
   cmd.add_option<bool>('o', "opt", "bool option");
-  cmd.allow_nonoptions("nonopts", false);
+  cmd.allow_nonoptions("nonopts", true);
 
   args = {"ascpp"};
   cmd.parse_args(args.size(), args.data());

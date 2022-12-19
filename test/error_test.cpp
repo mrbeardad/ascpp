@@ -36,6 +36,10 @@ struct debug {
   auto operator<=>(const debug&) const -> std::strong_ordering = default;
 };
 
+auto get_void_result() -> ascpp::result<void> {
+  return {};
+}
+
 auto get_value_result() -> ascpp::result<debug> {
   return debug{1};
 }
@@ -109,8 +113,10 @@ TEST(TestError, ResultComparsion) {
             ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
 }
 
+#include <type_traits>
 #if defined(__GNUC__) || defined(__clang__)
 auto try_unwrap() -> ascpp::result<debug> {
+  TRY(get_void_result());
   auto val = TRY(get_value_result());
   EXPECT_EQ(val.val, 1);
   auto err = TRY(get_error_result());

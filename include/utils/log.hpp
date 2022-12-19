@@ -2,15 +2,17 @@
 
 #include "app/info.hpp"
 
-class Logger {
+class logger {
  public:
-  explicit Logger(const ascpp::app_info* info) : app_info_(info) {}
+  enum level { TRACE, DEBUG, INFO, WARN, ERROR, FATAL };
 
-  Logger(Logger&&) = default;
-  Logger(const Logger&) = default;
-  auto operator=(Logger&&) -> Logger& = default;
-  auto operator=(const Logger&) -> Logger& = default;
-  ~Logger() = default;
+  explicit logger(const ascpp::app_info* info) : app_info_(info) {}
+
+  logger(logger&&) = default;
+  logger(const logger&) = default;
+  auto operator=(logger&&) -> logger& = default;
+  auto operator=(const logger&) -> logger& = default;
+  ~logger() = default;
 
  private:
   const ascpp::app_info* app_info_;
