@@ -583,7 +583,8 @@ class cmdline {
     }
   }
 
-  auto set_value(option& opt, const std::string& opt_name, const std::string& opt_value) -> void {
+  static auto set_value(option& opt, const std::string& opt_name, const std::string& opt_value)
+      -> void {
     auto parse_value = [&opt, &opt_name]<single_option T>(std::string_view opt_value) {
       if (!opt.transform.has_value()) {
         throw std::runtime_error("no transform function for option '" + opt_name + "'");
@@ -599,12 +600,12 @@ class cmdline {
 
     auto try_to_set_value = [&opt, &opt_value, &parse_value]<option_type T>() {
       if constexpr (single_option<T>) {
-        opt.result_value = parse_value.template operator()<T>(opt_value);
+        opt.result_value = parse_value.operator()<T>(opt_value);
       } else {
         auto vec = std::vector<typename T::value_type>();
         for (auto word : std::views::split(opt_value, ","s)) {
           auto sv = std::string_view(word.begin(), word.end());
-          vec.emplace_back(parse_value.template operator()<typename T::value_type>(sv));
+          vec.emplace_back(parse_value.operator()<typename T::value_type>(sv));
         }
         opt.result_value = std::move(vec);
       }
@@ -613,51 +614,51 @@ class cmdline {
     try {
       switch (opt.opt_type) {
         case option::S_BOOL:
-          try_to_set_value.template operator()<bool>();
+          try_to_set_value.operator()<bool>();
           break;
 
         case option::S_INT:
-          try_to_set_value.template operator()<int>();
+          try_to_set_value.operator()<int>();
           break;
 
         case option::S_SIZE:
-          try_to_set_value.template operator()<size_t>();
+          try_to_set_value.operator()<size_t>();
           break;
 
         case option::S_FLOAT:
-          try_to_set_value.template operator()<float>();
+          try_to_set_value.operator()<float>();
           break;
 
         case option::S_DOUBLE:
-          try_to_set_value.template operator()<double>();
+          try_to_set_value.operator()<double>();
           break;
 
         case option::S_STRING:
-          try_to_set_value.template operator()<std::string>();
+          try_to_set_value.operator()<std::string>();
           break;
 
         case option::M_BOOL:
-          try_to_set_value.template operator()<std::vector<bool>>();
+          try_to_set_value.operator()<std::vector<bool>>();
           break;
 
         case option::M_INT:
-          try_to_set_value.template operator()<std::vector<int>>();
+          try_to_set_value.operator()<std::vector<int>>();
           break;
 
         case option::M_SIZE:
-          try_to_set_value.template operator()<std::vector<size_t>>();
+          try_to_set_value.operator()<std::vector<size_t>>();
           break;
 
         case option::M_FLOAT:
-          try_to_set_value.template operator()<std::vector<float>>();
+          try_to_set_value.operator()<std::vector<float>>();
           break;
 
         case option::M_DOUBLE:
-          try_to_set_value.template operator()<std::vector<double>>();
+          try_to_set_value.operator()<std::vector<double>>();
           break;
 
         case option::M_STRING:
-          try_to_set_value.template operator()<std::vector<std::string>>();
+          try_to_set_value.operator()<std::vector<std::string>>();
           break;
         default:
           throw std::runtime_error(
