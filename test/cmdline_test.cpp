@@ -335,7 +335,7 @@ TEST(TestCmdline, BasicParse) {
   cmd.add_option<std::string>('r', "required",
                               "short option without implicit value requires a value")
       .with_default("default");
-  cmd.allow_nonoptions("nonopts", true);
+  cmd.allow_nonoptions("nonopts", false);
 
   args = {"ascpp"};
   cmd.parse_args(args.size(), args.data());
@@ -507,7 +507,7 @@ TEST(TestCmdline, BoolOption) {
   auto args = std::vector<const char*>();
 
   cmd.add_option<bool>('o', "opt", "bool option");
-  cmd.allow_nonoptions("nonopts", true);
+  cmd.allow_nonoptions("nonopts", false);
 
   args = {"ascpp"};
   cmd.parse_args(args.size(), args.data());

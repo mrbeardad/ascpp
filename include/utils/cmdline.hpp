@@ -302,13 +302,13 @@ class cmdline {
     return add_option<T>(std::string{short_opt}, std::move(long_opt), std::move(opt_desc));
   }
 
-  auto allow_nonoptions(std::string name, bool optional) -> void {
+  auto allow_nonoptions(std::string name, bool required) -> void {
     // empty nonopt_name_ means nonoptions are disallowed
     if (name.empty()) {
       throw std::logic_error("empty name for nonoptions is not allowed.");
     }
     nonopt_name_ = std::move(name);
-    is_nonopt_required_ = !optional;
+    is_nonopt_required_ = required;
   }
 
   auto get_option(const std::string& long_opt) const -> const option& {
