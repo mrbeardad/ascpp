@@ -162,12 +162,6 @@ class option_adder {
 
   explicit option_adder(option* opt) : opt_(opt) {}
 
-  option_adder(option_adder&&) noexcept = default;
-  option_adder(const option_adder&) = default;
-  auto operator=(option_adder&&) noexcept -> option_adder& = default;
-  auto operator=(const option_adder&) -> option_adder& = default;
-  ~option_adder() = default;
-
   auto with_transform(std::function<value_type(std::string_view)> transform) -> option_adder& {
     opt_->transform = std::move(transform);
     return *this;
@@ -285,12 +279,6 @@ inline auto transform_arg<std::string>(std::string_view arg) -> std::string {
 class cmdline {
  public:
   explicit cmdline(const app_info* app_info) : app_info_(app_info) {}
-
-  cmdline(cmdline&&) = default;
-  cmdline(const cmdline&) = default;
-  auto operator=(cmdline&&) -> cmdline& = default;
-  auto operator=(const cmdline&) -> cmdline& = default;
-  ~cmdline() = default;
 
   template <option_type T>
   auto add_option(std::string long_opt, std::string opt_desc) -> option_adder<T> {

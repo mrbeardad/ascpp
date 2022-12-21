@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <expected>
 #include <stdexcept>
 #include <system_error>
@@ -40,22 +41,14 @@ class error : public std::error_category {
   auto name() const noexcept -> const char* override { return "ascpp"; }
 
   auto message(int ec) const -> std::string override {
-    switch (ec) {
-      case GET_ENV_FAILED:
-        return "get env failed";
-      case GET_EMPTY_ENV:
-        return "env value is empty";
-      case SET_ENV_FAILED:
-        return "set env failed";
-      case CODECVT_FAILED:
-        return "codecvt failed";
-      case INVALID_ARGUMENT:
-        return "invalid argument";
-      case OUT_OF_RANGE:
-        return "out of range";
-      default:
-        return "unkown error";
+    constexpr auto msg = std::array{
+        "no error",       "get env failed",   "env value is empty", "set env failed",
+        "codecvt failed", "invalid argument", "out of range",
+    };
+    if (static_cast<unsigned>(ec) < msg.size()) {
+      return msg[ec];
     }
+    return "unkown error";
   }
 };
 
@@ -67,7 +60,7 @@ ERROR_CODE_ENUM(ascpp::error);
 
 #if defined(__GNUC__) || defined(__clang__)
 /**
- * @brief Try to get the result when it has value or return the error to upper.
+ * @brief Try to get the result value if it has value, otherwise return the error to upper.
  *
  */
 #define TRY(...)                    \
@@ -84,7 +77,7 @@ namespace ascpp {
 
 class result_error : public std::runtime_error {
  public:
-  explicit result_error(std::error_code ec) : std::runtime_error(ec.message()), ec_(ec) {}
+  explicit result_error(const std::error_code& ec) : std::runtime_error(ec.message()), ec_(ec) {}
 
   auto code() const -> const std::error_code& { return ec_; }
 
@@ -105,7 +98,7 @@ class [[nodiscard]] result_impl : public Base {
   using value_type = std::conditional_t<std::is_void_v<T>, void_result, T>;
   using Base::Base;
 
-  result_impl(std::error_code ec) : Base(std::unexpected(ec)) {}
+  result_impl(const std::error_code& ec) : Base(std::unexpected(ec)) {}
 
   template <typename U>
     requires(std::is_void_v<T>)
@@ -127,7 +120,7 @@ class [[nodiscard]] result_impl : public Base {
     }
   }
 
-  auto operator=(std::error_code ec) -> result_impl& {
+  auto operator=(const std::error_code& ec) -> result_impl& {
     Base::operator=(std::unexpected(ec));
     return *this;
   }
@@ -199,6 +192,11 @@ class [[nodiscard]] result_impl : public Base {
   }
 };
 
+/**
+ * @brief Wrap the result value in roder to force user to handle unexpected error.
+ *
+ * @tparam T result value type
+ */
 template <typename T>
 using result = result_impl<
     T,
