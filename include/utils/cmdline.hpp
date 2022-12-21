@@ -673,6 +673,7 @@ class cmdline {
         throw std::runtime_error(std::format("the value is out of range for {} option '{}': {}",
                                              option::type_name(opt.opt_type), opt_name, opt_value));
       }
+      throw;
     }
   }
 

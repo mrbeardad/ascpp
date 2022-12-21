@@ -1,8 +1,5 @@
 #include "utils/misc.hpp"
 
-#include <cmath>
-#include <vector>
-
 #include "gtest/gtest.h"
 
 #include "utils/error.hpp"
