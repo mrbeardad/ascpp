@@ -11,13 +11,13 @@
 TEST(TestMisc, GetAndSetEnv) {
   EXPECT_EQ(ascpp::get_env("null").error(), ascpp::error::GET_EMPTY_ENV);
 
-  ascpp::set_env("empty", "");
+  ascpp::set_env("empty", "").value();
   EXPECT_EQ(ascpp::get_env("empty").error(), ascpp::error::GET_EMPTY_ENV);
 
-  ascpp::set_env("hello", "world");
+  ascpp::set_env("hello", "world").value();
   EXPECT_EQ(ascpp::get_env("hello").value(), "world");
 
-  ascpp::set_env("name with space", "value with space");
+  ascpp::set_env("name with space", "value with space").value();
   EXPECT_EQ(ascpp::get_env("name with space").value(), "value with space");
 }
 
@@ -29,12 +29,12 @@ TEST(TestDirectories, Directories) {
   auto dirpath = ascpp::get_cache_dir().value() / "ascpp" / "";
   std::filesystem::remove_all(dirpath);
   std::clog << "CreateFilePath(): " << dirpath << std::endl;
-  ascpp::create_file_path(dirpath);
+  ascpp::create_file_path(dirpath).value();
 
   auto filepath = ascpp::get_cache_dir().value() / "ascpp" / "file.txt";
   std::filesystem::remove(filepath);
   std::clog << "CreateFilePath(): " << filepath << std::endl;
-  ascpp::create_file_path(filepath);
+  ascpp::create_file_path(filepath).value();
 }
 
 // NOLINTEND(modernize-use-trailing-return-type)

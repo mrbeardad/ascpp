@@ -111,6 +111,20 @@ TEST(TestError, ResultComparsion) {
   EXPECT_NE(ascpp::result<debug>(1), ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
   EXPECT_EQ(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)),
             ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
+  EXPECT_EQ(ascpp::result<debug>(make_error_code(myerror::BAD_ERR)),
+            make_error_code(myerror::BAD_ERR));
+  EXPECT_EQ(make_error_code(myerror::BAD_ERR),
+            ascpp::result<debug>(make_error_code(myerror::BAD_ERR)));
+
+  EXPECT_EQ(ascpp::result<void>(), ascpp::result<void>());
+  EXPECT_NE(ascpp::result<void>(make_error_code(myerror::BAD_ERR)), ascpp::result<void>());
+  EXPECT_NE(ascpp::result<void>(), ascpp::result<void>(make_error_code(myerror::BAD_ERR)));
+  EXPECT_NE(ascpp::result<void>(make_error_code(myerror::NO_ERR)),
+            ascpp::result<void>(make_error_code(myerror::BAD_ERR)));
+  EXPECT_EQ(ascpp::result<void>(make_error_code(myerror::BAD_ERR)),
+            make_error_code(myerror::BAD_ERR));
+  EXPECT_EQ(make_error_code(myerror::BAD_ERR),
+            ascpp::result<void>(make_error_code(myerror::BAD_ERR)));
 }
 
 #include <type_traits>
@@ -119,7 +133,8 @@ auto try_unwrap() -> ascpp::result<debug> {
   TRY(get_void_result());
   auto val = TRY(get_value_result());
   EXPECT_EQ(val.val, 1);
-  auto err = TRY(get_error_result());
+  auto err = TRY(get_error_result());  // return
+  val.val2 = err.val2;
   return val;
 }
 

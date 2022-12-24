@@ -69,7 +69,7 @@ ERROR_CODE_ENUM(ascpp::error);
     if (!_ascpp_res_.has_value()) { \
       return _ascpp_res_.error();   \
     }                               \
-    std::move(_ascpp_res_.value()); \
+    std::move(_ascpp_res_).value(); \
   })
 #endif
 
@@ -95,80 +95,37 @@ class [[nodiscard]] result_impl : public Base {
 
  public:
   using base_type = Base;
-  using value_type = std::conditional_t<std::is_void_v<T>, void_result, T>;
   using Base::Base;
 
   result_impl(const std::error_code& ec) : Base(std::unexpected(ec)) {}
-
-  template <typename U>
-    requires(std::is_void_v<T>)
-  explicit result_impl(const result<U>& other) {
-    if (other.has_value()) {
-      Base::emplace();
-    } else {
-      Base::operator=(std::unexpected(other.error()));
-    }
-  }
-
-  template <typename U>
-    requires(std::is_void_v<T>)
-  explicit result_impl(result<U>&& other) {
-    if (other.has_value()) {
-      Base::emplace();
-    } else {
-      Base::operator=(std::unexpected(std::move(other.error())));
-    }
-  }
 
   auto operator=(const std::error_code& ec) -> result_impl& {
     Base::operator=(std::unexpected(ec));
     return *this;
   }
 
-  template <typename U>
-    requires(std::is_void_v<T>)
-  auto operator=(const result<U>& other) -> result_impl& {
-    if (other.has_value()) {
-      Base::emplace();
-    } else {
-      Base::operator=(std::unexpected(other.error()));
-    }
-    return *this;
-  }
-
-  template <typename U>
-    requires(std::is_void_v<T>)
-  auto operator=(result<U>&& other) -> result_impl& {
-    if (other.has_value()) {
-      Base::emplace();
-    } else {
-      Base::operator=(std::unexpected(std::move(other.error())));
-    }
-    return *this;
-  }
-
-  [[nodiscard]] auto value() & -> value_type& {
+  [[nodiscard]] auto value() & -> T& {
     if (!this->has_value()) {
       throw result_error(this->error());
     }
     return static_cast<Base&>(*this).value();
   }
 
-  [[nodiscard]] auto value() const& -> const value_type& {
+  [[nodiscard]] auto value() const& -> const T& {
     if (!this->has_value()) {
       throw result_error(this->error());
     }
     return static_cast<const Base&>(*this).value();
   }
 
-  [[nodiscard]] auto value() && -> value_type&& {
+  [[nodiscard]] auto value() && -> T&& {
     if (!this->has_value()) {
       throw result_error(this->error());
     }
     return static_cast<Base&&>(*this).value();
   }
 
-  [[nodiscard]] auto value() const&& -> const value_type&& {
+  [[nodiscard]] auto value() const&& -> const T&& {
     if (!this->has_value()) {
       throw result_error(this->error());
     }
@@ -190,6 +147,102 @@ class [[nodiscard]] result_impl : public Base {
   friend constexpr auto operator==(const result_impl& x, const std::unexpected<E2>& e) -> bool {
     return static_cast<const base_type&>(x) == e;
   }
+
+  friend constexpr auto operator==(const result_impl& x, const std::error_code& e) -> bool {
+    return static_cast<const base_type&>(x) == std::unexpected(e);
+  }
+
+  friend constexpr auto operator==(const std::error_code& e, const result_impl& x) -> bool {
+    return static_cast<const base_type&>(x) == std::unexpected(e);
+  }
+};
+
+template <typename Base>
+class [[nodiscard]] result_impl<void, Base> : public Base {
+  template <typename U>
+  using result = result_impl<U, std::expected<U, std::error_code>>;
+
+ public:
+  using base_type = Base;
+  using Base::Base;
+
+  result_impl(const std::error_code& ec) : Base(std::unexpected(ec)) {}
+
+  template <typename U>
+  explicit result_impl(const result<U>& other) {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(other.error()));
+    }
+  }
+
+  template <typename U>
+  explicit result_impl(result<U>&& other) {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(std::move(other.error())));
+    }
+  }
+
+  auto operator=(const std::error_code& ec) -> result_impl& {
+    Base::operator=(std::unexpected(ec));
+    return *this;
+  }
+
+  template <typename U>
+  auto operator=(const result<U>& other) -> result_impl& {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(other.error()));
+    }
+    return *this;
+  }
+
+  template <typename U>
+  auto operator=(result<U>&& other) -> result_impl& {
+    if (other.has_value()) {
+      Base::emplace();
+    } else {
+      Base::operator=(std::unexpected(std::move(other.error())));
+    }
+    return *this;
+  }
+
+  auto value() const& -> void {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<const Base&>(*this).value();
+  }
+
+  auto value() const&& -> void {
+    if (!this->has_value()) {
+      throw result_error(this->error());
+    }
+    return static_cast<const Base&&>(*this).value();
+  }
+
+  template <class T2>
+  friend constexpr auto operator==(const result_impl& lhs, const result<T2>& rhs) -> bool {
+    return static_cast<const base_type&>(lhs)
+           == static_cast<const typename result<T2>::base_type&>(rhs);
+  }
+
+  template <class E2>
+  friend constexpr auto operator==(const result_impl& x, const std::unexpected<E2>& e) -> bool {
+    return static_cast<const base_type&>(x) == e;
+  }
+
+  friend constexpr auto operator==(const result_impl& x, const std::error_code& e) -> bool {
+    return static_cast<const base_type&>(x) == std::unexpected(e);
+  }
+
+  friend constexpr auto operator==(const std::error_code& e, const result_impl& x) -> bool {
+    return static_cast<const base_type&>(x) == std::unexpected(e);
+  }
 };
 
 /**
@@ -198,8 +251,6 @@ class [[nodiscard]] result_impl : public Base {
  * @tparam T result value type
  */
 template <typename T>
-using result = result_impl<
-    T,
-    std::expected<std::conditional_t<std::is_void_v<T>, void_result, T>, std::error_code>>;
+using result = result_impl<T, std::expected<T, std::error_code>>;
 
 }  // namespace ascpp
