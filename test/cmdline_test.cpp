@@ -312,9 +312,9 @@ TEST(TestCmdline, AddBadOptions) {
   EXPECT_ANY_THROW(cmd.add_option<bool>("=with", ""));
   EXPECT_ANY_THROW(cmd.add_option<bool>("wi=th", ""));
   EXPECT_ANY_THROW(cmd.add_option<bool>("中文选项", ""));
-  cmd.add_option<bool>("-hyphen", "allowed - in long option");
-  EXPECT_EQ(cmd.get_option("-hyphen").short_opt, "");
-  EXPECT_EQ(cmd.get_option("-hyphen").long_opt, "-hyphen");
+  EXPECT_ANY_THROW(
+      cmd.add_option<bool>("-hyphen", "starting with - in long option is not allowed"));
+  EXPECT_ANY_THROW(cmd.get_option("-hyphen"));
   cmd.add_option<bool>("hyphen-", "allowed - in long option");
   EXPECT_EQ(cmd.get_option("hyphen-").short_opt, "");
   EXPECT_EQ(cmd.get_option("hyphen-").long_opt, "hyphen-");

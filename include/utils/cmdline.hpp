@@ -59,7 +59,7 @@ struct option {
   };
 
   template <option_type T>
-  static consteval auto get_type() -> type {
+  static constexpr auto get_type() -> type {
     if constexpr (std::is_same_v<T, bool>) {
       return S_BOOL;
     }
@@ -160,61 +160,61 @@ class option_adder {
  public:
   using value_type = typename option_value_type<T>::type;
 
-  explicit option_adder(option* opt) : opt_(opt) {}
+  explicit option_adder(option* opt) : _opt(opt) {}
 
   auto with_transform(std::function<value_type(std::string_view)> transform) -> option_adder& {
-    opt_->transform = std::move(transform);
+    _opt->transform = std::move(transform);
     return *this;
   }
 
   auto with_limits(std::unordered_set<value_type> limit_set) -> option_adder& {
-    opt_->limits = std::move(limit_set);
+    _opt->limits = std::move(limit_set);
     return *this;
   }
 
   auto with_limits(std::function<bool(const value_type&)> limit_fn) -> option_adder& {
-    opt_->limits = std::move(limit_fn);
+    _opt->limits = std::move(limit_fn);
     return *this;
   }
 
   auto with_default(T default_value) -> option_adder& {
     if constexpr (single_option<T>) {
-      if (!opt_->check_value(default_value)) {
+      if (!_opt->check_value(default_value)) {
         throw std::logic_error(std::format("the default value is invalid for {} option '{}': {}",
-                                           option::type_name(opt_->opt_type), opt_->long_opt,
+                                           option::type_name(_opt->opt_type), _opt->long_opt,
                                            default_value));
       }
     } else {
-      if (auto itr = opt_->check_value(default_value); itr != default_value.end()) {
+      if (auto itr = _opt->check_value(default_value); itr != default_value.end()) {
         throw std::logic_error(
             std::format("the value in default values is invalid for {} option '{}': {}",
-                        option::type_name(opt_->opt_type), opt_->long_opt, *itr));
+                        option::type_name(_opt->opt_type), _opt->long_opt, *itr));
       }
     }
-    opt_->default_value = std::move(default_value);
+    _opt->default_value = std::move(default_value);
     return *this;
   }
 
   auto with_implicit(T implicit_value) -> option_adder& {
     if constexpr (single_option<T>) {
-      if (!opt_->check_value(implicit_value)) {
+      if (!_opt->check_value(implicit_value)) {
         throw std::logic_error(std::format("the implicit value is invalid for {} option '{}' : {}",
-                                           option::type_name(opt_->opt_type), opt_->long_opt,
+                                           option::type_name(_opt->opt_type), _opt->long_opt,
                                            implicit_value));
       }
     } else {
-      if (auto itr = opt_->check_value(implicit_value); itr != implicit_value.end()) {
+      if (auto itr = _opt->check_value(implicit_value); itr != implicit_value.end()) {
         throw std::logic_error(
             std::format("the value in implicit values is invalid for {} option '{}': {}",
-                        option::type_name(opt_->opt_type), opt_->long_opt, *itr));
+                        option::type_name(_opt->opt_type), _opt->long_opt, *itr));
       }
     }
-    opt_->implicit_value = std::move(implicit_value);
+    _opt->implicit_value = std::move(implicit_value);
     return *this;
   }
 
  private:
-  option* opt_;
+  option* _opt;
 };
 
 namespace detail {
@@ -278,16 +278,16 @@ inline auto transform_arg<std::string>(std::string_view arg) -> std::string {
 
 class cmdline {
  public:
-  explicit cmdline(const app_info* app_info) : app_info_(app_info) {}
+  explicit cmdline(const app_info* app_info) : _app_info(app_info) {}
 
   template <option_type T>
   auto add_option(std::string long_opt, std::string opt_desc) -> option_adder<T> {
-    return add_option<T>(""s, std::move(long_opt), std::move(opt_desc));
+    return _add_option<T>(""s, std::move(long_opt), std::move(opt_desc));
   }
 
   template <option_type T>
   auto add_option(char short_opt, std::string long_opt, std::string opt_desc) -> option_adder<T> {
-    return add_option<T>(std::string{short_opt}, std::move(long_opt), std::move(opt_desc));
+    return _add_option<T>(std::string{short_opt}, std::move(long_opt), std::move(opt_desc));
   }
 
   auto allow_nonoptions(std::string name, bool required) -> void {
@@ -295,16 +295,16 @@ class cmdline {
     if (name.empty()) {
       throw std::logic_error("empty name for nonoptions is not allowed.");
     }
-    nonopt_name_ = std::move(name);
-    is_nonopt_required_ = required;
+    _nonopt_name = std::move(name);
+    _is_nonopt_required = required;
   }
 
   auto get_option(const std::string& long_opt) const -> const option& {
-    return options_[search_idx_.at(long_opt)];
+    return _options[_search_idx.at(long_opt)];
   }
 
   auto get_option(char short_opt) const -> const option& {
-    return options_[search_idx_.at(std::string{short_opt})];
+    return _options[_search_idx.at(std::string{short_opt})];
   }
 
   auto help_string() const -> std::string {
@@ -320,14 +320,14 @@ class cmdline {
       return ret;
     };
 
-    auto ret = std::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", app_info_->app_name(),
-                           app_info_->app_version(), app_info_->app_intro(), app_info_->app_name());
-    if (!nonopt_name_.empty()) {
+    auto ret = std::format("{} {}\n{}\n\nUSAGE:\n  {} [OPTIONS] ", _app_info->app_name(),
+                           _app_info->app_version(), _app_info->app_intro(), _app_info->app_name());
+    if (!_nonopt_name.empty()) {
       ret += "[--] ";
-      if (is_nonopt_required_) {
-        ret += nonopt_name_;
+      if (_is_nonopt_required) {
+        ret += _nonopt_name;
       } else {
-        ret += "[" + nonopt_name_ + "]";
+        ret += "[" + _nonopt_name + "]";
       }
     }
     ret += "\n\n";
@@ -340,7 +340,7 @@ class cmdline {
     auto optional_opt_name_col_width = std::vector<size_t>();
     auto optional_opt_desc_col = std::vector<const std::string*>();
 
-    for (auto& opt : options_) {
+    for (auto& opt : _options) {
       auto opt_name_col = &required_opt_name_col;
       auto opt_name_col_width = &required_opt_name_col_width;
       auto opt_desc_col = &required_opt_desc_col;
@@ -396,17 +396,17 @@ class cmdline {
 
   // NOLINTNEXTLINE(modernize-avoid-c-arrays)
   auto parse_args(int argc, const char* const argv[], bool print_and_exit = false) -> void try {
-    for (auto& opt : options_) {
+    for (auto& opt : _options) {
       opt.result_value.reset();
     }
-    nonoptions_.clear();
+    _nonoptions.clear();
 
     auto end_parse = false;
 
     for (auto i = 1; i < argc; ++i) {
       auto this_arg = std::string(argv[i]);
       if (end_parse) {
-        nonoptions_.emplace_back(this_arg);
+        _nonoptions.emplace_back(this_arg);
         continue;
       }
       if (this_arg == "--") {
@@ -415,14 +415,14 @@ class cmdline {
         auto es_pos = this_arg.find('=');
         auto opt_name = this_arg.substr(2, es_pos - 2);
 
-        auto opt_idx = search_idx_.find(opt_name);
-        if (opt_idx == search_idx_.end()) {
+        auto opt_idx = _search_idx.find(opt_name);
+        if (opt_idx == _search_idx.end()) {
           throw std::runtime_error("no option '" + opt_name + "'");
         }
         if (opt_name.size() < 2) {
           throw std::runtime_error("wrong form for short option '" + this_arg + "'");
         }
-        auto& opt = options_[opt_idx->second];
+        auto& opt = _options[opt_idx->second];
 
         if (es_pos == std::string::npos) {
           // form: --option [value]
@@ -430,36 +430,36 @@ class cmdline {
             if (i + 1 >= argc) {
               throw std::runtime_error("requires a value for option '" + opt_name + "'");
             }
-            set_value(opt, opt_name, argv[++i]);
+            _set_value(opt, opt_name, argv[++i]);
           } else {
             opt.result_value = opt.implicit_value;
           }
         } else {
           // form: --option=[value]
           if (es_pos + 1 >= this_arg.size()) {
-            set_value(opt, opt_name, "");
+            _set_value(opt, opt_name, "");
           } else {
-            set_value(opt, opt_name, this_arg.substr(es_pos + 1));
+            _set_value(opt, opt_name, this_arg.substr(es_pos + 1));
           }
         }
       } else if (this_arg.starts_with("-")) {
         for (auto j = 1UZ; j < this_arg.size(); ++j) {
           auto cur_opt = std::string{this_arg[j]};
-          auto opt_idx = search_idx_.find(cur_opt);
-          if (opt_idx == search_idx_.end()) {
+          auto opt_idx = _search_idx.find(cur_opt);
+          if (opt_idx == _search_idx.end()) {
             throw std::runtime_error("no option '" + cur_opt + "'");
           }
-          auto& opt = options_[opt_idx->second];
+          auto& opt = _options[opt_idx->second];
           if (!opt.implicit_value.has_value()) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt value
               if (i + 1 >= argc) {
                 throw std::runtime_error("requires a value for option '" + cur_opt + "'");
               }
-              set_value(opt, cur_opt, argv[++i]);
+              _set_value(opt, cur_opt, argv[++i]);
             } else {
               // form: -optvalue
-              set_value(opt, cur_opt, this_arg.substr(j + 1));
+              _set_value(opt, cur_opt, this_arg.substr(j + 1));
               break;
             }
           } else if (opt.opt_type != option::S_BOOL) {
@@ -468,7 +468,7 @@ class cmdline {
               opt.result_value = opt.implicit_value;
             } else {
               // form: -optvlaue
-              set_value(opt, cur_opt, this_arg.substr(j + 1));
+              _set_value(opt, cur_opt, this_arg.substr(j + 1));
               break;
             }
           } else {
@@ -476,18 +476,18 @@ class cmdline {
           }
         }
       } else {
-        nonoptions_.emplace_back(this_arg);
+        _nonoptions.emplace_back(this_arg);
       }
     }
 
-    if (nonopt_name_.empty() && !nonoptions_.empty()) {
+    if (_nonopt_name.empty() && !_nonoptions.empty()) {
       throw std::runtime_error("nonoption arguments are not allowed");
     }
-    if (is_nonopt_required_ && nonoptions_.empty()) {
-      throw std::runtime_error("required nonoption arguments as " + nonopt_name_);
+    if (_is_nonopt_required && _nonoptions.empty()) {
+      throw std::runtime_error("required nonoption arguments as " + _nonopt_name);
     }
 
-    for (auto& opt : options_) {
+    for (auto& opt : _options) {
       if (!opt.result_value.has_value()) {
         if (!opt.default_value.has_value()) {
           throw std::runtime_error("requires option '" + opt.long_opt + "'");
@@ -507,7 +507,7 @@ class cmdline {
 
   template <option_type T>
   auto get_value(const std::string& opt_name) const -> const T& {
-    return std::any_cast<const T&>(options_[search_idx_.at(opt_name)].result_value);
+    return std::any_cast<const T&>(_options[_search_idx.at(opt_name)].result_value);
   }
 
   template <option_type T>
@@ -515,24 +515,24 @@ class cmdline {
     return get_value<const T>(std::string{opt_name});
   }
 
-  auto get_nonoptions() const -> const std::vector<std::string>& { return nonoptions_; }
+  auto get_nonoptions() const -> const std::vector<std::string>& { return _nonoptions; }
 
  private:
   template <option_type T>
-  auto add_option(std::string short_opt, std::string long_opt, std::string opt_desc)
+  auto _add_option(std::string short_opt, std::string long_opt, std::string opt_desc)
       -> option_adder<T> {
     if (short_opt.size() == 1) {
-      check_optname(short_opt[0]);
-      search_idx_[short_opt] = options_.size();
+      _check_optname(short_opt[0]);
+      _search_idx[short_opt] = _options.size();
     } else {
       short_opt.clear();
     }
 
-    check_optname(long_opt);
-    search_idx_[long_opt] = options_.size();
-    options_.emplace_back(option{option::get_type<T>(), std::move(short_opt), std::move(long_opt),
+    _check_optname(long_opt);
+    _search_idx[long_opt] = _options.size();
+    _options.emplace_back(option{option::get_type<T>(), std::move(short_opt), std::move(long_opt),
                                  std::move(opt_desc)});
-    auto opt_adder = option_adder<T>(&options_.back());
+    auto opt_adder = option_adder<T>(&_options.back());
 
     if constexpr (std::is_same_v<T, bool>) {
       opt_adder.with_default(false).with_implicit(true);
@@ -542,9 +542,9 @@ class cmdline {
     return opt_adder;
   }
 
-  auto check_optname(char opt_name) const -> void {
+  auto _check_optname(char opt_name) const -> void {
     auto str_opt = std::string{opt_name};
-    if (search_idx_.find(str_opt) != search_idx_.end()) {
+    if (_search_idx.find(str_opt) != _search_idx.end()) {
       throw std::logic_error("duplicate option '" + str_opt + "'");
     }
     if (!std::isgraph(static_cast<unsigned char>(opt_name))) {
@@ -555,8 +555,8 @@ class cmdline {
     }
   }
 
-  auto check_optname(const std::string& opt_name) const -> void {
-    if (search_idx_.find(opt_name) != search_idx_.end()) {
+  auto _check_optname(const std::string& opt_name) const -> void {
+    if (_search_idx.find(opt_name) != _search_idx.end()) {
       throw std::logic_error("duplicate option '" + opt_name + "'");
     }
     if (opt_name.size() <= 2) {
@@ -566,12 +566,15 @@ class cmdline {
                              [](char c) { return std::isgraph(static_cast<unsigned char>(c)); })) {
       throw std::logic_error("long option name must be graphical string: '" + opt_name + "'");
     }
+    if (opt_name.starts_with("-")) {
+      throw std::logic_error("long option name could not starts with '-'");
+    }
     if (opt_name.find('=') != std::string::npos) {
       throw std::logic_error("long option name could not contain '='");
     }
   }
 
-  static auto set_value(option& opt, const std::string& opt_name, const std::string& opt_value)
+  static auto _set_value(option& opt, const std::string& opt_name, const std::string& opt_value)
       -> void {
     auto parse_value = [&opt, &opt_name]<single_option T>(std::string_view opt_value) {
       if (!opt.transform.has_value()) {
@@ -665,12 +668,12 @@ class cmdline {
     }
   }
 
-  const app_info* app_info_;
-  std::unordered_map<std::string, size_t> search_idx_;
-  std::vector<option> options_;
-  std::vector<std::string> nonoptions_;
-  std::string nonopt_name_;
-  bool is_nonopt_required_;
+  const app_info* _app_info;
+  std::unordered_map<std::string, size_t> _search_idx;
+  std::vector<option> _options;
+  std::vector<std::string> _nonoptions;
+  std::string _nonopt_name;
+  bool _is_nonopt_required;
 };
 
 }  // namespace ascpp

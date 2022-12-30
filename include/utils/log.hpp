@@ -6,7 +6,7 @@ class logger {
  public:
   enum level { TRACE, DEBUG, INFO, WARN, ERROR, FATAL };
 
-  explicit logger(const ascpp::app_info* info) : app_info_(info) {}
+  explicit logger(const ascpp::app_info* info) : _app_info(info) {}
 
   logger(logger&&) = default;
   logger(const logger&) = default;
@@ -15,5 +15,5 @@ class logger {
   ~logger() = default;
 
  private:
-  const ascpp::app_info* app_info_;
+  const ascpp::app_info* _app_info;
 };

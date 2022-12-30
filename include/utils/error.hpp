@@ -85,8 +85,6 @@ class result_error : public std::runtime_error {
   std::error_code ec_;
 };
 
-struct void_result {};
-
 template <typename T, typename Base>
   requires(!std::is_same_v<T, std::error_code>)
 class [[nodiscard]] result_impl : public Base {
