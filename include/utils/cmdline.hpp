@@ -44,57 +44,46 @@ concept option_type = single_option<T> || multi_option<T>;
 struct option {
   // Use enum instead of std::any::type, so switch statement is available in runtime
   enum type {
-    S_BOOL,
-    S_INT,
-    S_SIZE,
-    S_FLOAT,
-    S_DOUBLE,
-    S_STRING,
-    M_BOOL,
-    M_INT,
-    M_SIZE,
-    M_FLOAT,
-    M_DOUBLE,
-    M_STRING
+    single_bool,
+    single_int,
+    single_size,
+    single_float,
+    single_double,
+    single_string,
+    multiple_bool,
+    multiple_int,
+    multiple_size,
+    multiple_float,
+    multiple_double,
+    multiple_string,
   };
 
   template <option_type T>
   static constexpr auto get_type() -> type {
     if constexpr (std::is_same_v<T, bool>) {
-      return S_BOOL;
-    }
-    if constexpr (std::is_same_v<T, int>) {
-      return S_INT;
-    }
-    if constexpr (std::is_same_v<T, size_t>) {
-      return S_SIZE;
-    }
-    if constexpr (std::is_same_v<T, float>) {
-      return S_FLOAT;
-    }
-    if constexpr (std::is_same_v<T, double>) {
-      return S_DOUBLE;
-    }
-    if constexpr (std::is_same_v<T, std::string>) {
-      return S_STRING;
-    }
-    if constexpr (std::is_same_v<T, std::vector<bool>>) {
-      return M_BOOL;
-    }
-    if constexpr (std::is_same_v<T, std::vector<int>>) {
-      return M_INT;
-    }
-    if constexpr (std::is_same_v<T, std::vector<size_t>>) {
-      return M_SIZE;
-    }
-    if constexpr (std::is_same_v<T, std::vector<float>>) {
-      return M_FLOAT;
-    }
-    if constexpr (std::is_same_v<T, std::vector<double>>) {
-      return M_DOUBLE;
-    }
-    if constexpr (std::is_same_v<T, std::vector<std::string>>) {
-      return M_STRING;
+      return single_bool;
+    } else if constexpr (std::is_same_v<T, int>) {
+      return single_int;
+    } else if constexpr (std::is_same_v<T, size_t>) {
+      return single_size;
+    } else if constexpr (std::is_same_v<T, float>) {
+      return single_float;
+    } else if constexpr (std::is_same_v<T, double>) {
+      return single_double;
+    } else if constexpr (std::is_same_v<T, std::string>) {
+      return single_string;
+    } else if constexpr (std::is_same_v<T, std::vector<bool>>) {
+      return multiple_bool;
+    } else if constexpr (std::is_same_v<T, std::vector<int>>) {
+      return multiple_int;
+    } else if constexpr (std::is_same_v<T, std::vector<size_t>>) {
+      return multiple_size;
+    } else if constexpr (std::is_same_v<T, std::vector<float>>) {
+      return multiple_float;
+    } else if constexpr (std::is_same_v<T, std::vector<double>>) {
+      return multiple_double;
+    } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+      return multiple_string;
     }
   }
 
@@ -312,7 +301,7 @@ class cmdline {
       auto ret = ""s;
       if (!opt.implicit_value.has_value()) {
         ret = std::format("--{}=<{}>", opt.long_opt, option::type_name(opt.opt_type));
-      } else if (opt.opt_type != option::S_BOOL) {
+      } else if (opt.opt_type != option::single_bool) {
         ret = std::format("--{}[=<{}>]", opt.long_opt, option::type_name(opt.opt_type));
       } else {
         ret = std::format("--{}", opt.long_opt);
@@ -462,7 +451,7 @@ class cmdline {
               _set_value(opt, cur_opt, this_arg.substr(j + 1));
               break;
             }
-          } else if (opt.opt_type != option::S_BOOL) {
+          } else if (opt.opt_type != option::single_bool) {
             if (j + 1 >= this_arg.size()) {
               // form: -opt
               opt.result_value = opt.implicit_value;
@@ -604,51 +593,51 @@ class cmdline {
 
     try {
       switch (opt.opt_type) {
-        case option::S_BOOL:
+        case option::single_bool:
           try_to_set_value.operator()<bool>();
           break;
 
-        case option::S_INT:
+        case option::single_int:
           try_to_set_value.operator()<int>();
           break;
 
-        case option::S_SIZE:
+        case option::single_size:
           try_to_set_value.operator()<size_t>();
           break;
 
-        case option::S_FLOAT:
+        case option::single_float:
           try_to_set_value.operator()<float>();
           break;
 
-        case option::S_DOUBLE:
+        case option::single_double:
           try_to_set_value.operator()<double>();
           break;
 
-        case option::S_STRING:
+        case option::single_string:
           try_to_set_value.operator()<std::string>();
           break;
 
-        case option::M_BOOL:
+        case option::multiple_bool:
           try_to_set_value.operator()<std::vector<bool>>();
           break;
 
-        case option::M_INT:
+        case option::multiple_int:
           try_to_set_value.operator()<std::vector<int>>();
           break;
 
-        case option::M_SIZE:
+        case option::multiple_size:
           try_to_set_value.operator()<std::vector<size_t>>();
           break;
 
-        case option::M_FLOAT:
+        case option::multiple_float:
           try_to_set_value.operator()<std::vector<float>>();
           break;
 
-        case option::M_DOUBLE:
+        case option::multiple_double:
           try_to_set_value.operator()<std::vector<double>>();
           break;
 
-        case option::M_STRING:
+        case option::multiple_string:
           try_to_set_value.operator()<std::vector<std::string>>();
           break;
         default:

@@ -53,7 +53,7 @@ TEST(TestError, ResultUsage) {
   EXPECT_TRUE(res);
   EXPECT_EQ(res.has_value(), true);
   EXPECT_EQ(res.value(), debug{1});
-  EXPECT_EQ(res->val, 1);
+  EXPECT_EQ(res.value().val, 1);
 
   res = get_error_result();
   EXPECT_FALSE(res);
@@ -64,21 +64,21 @@ TEST(TestError, ResultUsage) {
 
 TEST(TestError, ResultConstructorAndAssignment) {
   auto r1 = ascpp::result<debug>(debug{1});
-  EXPECT_EQ(r1->val, 1);
+  EXPECT_EQ(r1.value().val, 1);
   r1 = debug{2};
-  EXPECT_EQ(r1->val, 2);
+  EXPECT_EQ(r1.value().val, 2);
 
   // ascpp::result<debug>({1, 1}) no match constructor
 
   auto r3 = ascpp::result<debug>(1);
-  EXPECT_EQ(r3->val, 1);
+  EXPECT_EQ(r3.value().val, 1);
   r3 = 2;
-  EXPECT_EQ(r3->val, 2);
+  EXPECT_EQ(r3.value().val, 2);
 
   auto r4 = ascpp::result<debug>(ascpp::result<int>(1));
-  EXPECT_EQ(r4->val, 1);
+  EXPECT_EQ(r4.value().val, 1);
   r4 = ascpp::result<int>(2);
-  EXPECT_EQ(r4->val, 2);
+  EXPECT_EQ(r4.value().val, 2);
 
   // ascpp::result<debug>(ascpp::result<void>()) no match constructor
   auto r5 = ascpp::result<void>(ascpp::result<debug>(1));

@@ -29,11 +29,11 @@ namespace ascpp {
 class error : public std::error_category {
  public:
   enum errc {
-    NO_ERROR,
-    GET_ENV_FAILED,
-    GET_EMPTY_ENV,
-    SET_ENV_FAILED,
-    CODECVT_FAILED,
+    no_error,
+    get_env_failed,
+    get_empty_env,
+    set_env_failed,
+    codecvt_failed,
     INVALID_ARGUMENT,
     OUT_OF_RANGE
   };
@@ -129,6 +129,8 @@ class [[nodiscard]] result_impl : public Base {
     }
     return static_cast<const Base&&>(*this).value();
   }
+
+  auto operator->() const noexcept -> const T* = delete;
 
   template <class T2>
   friend constexpr auto operator==(const result_impl& lhs, const result<T2>& rhs) -> bool {

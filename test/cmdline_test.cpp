@@ -19,33 +19,33 @@
 // NOLINTBEGIN(modernize-use-trailing-return-type,bugprone-narrowing-conversions)
 
 TEST(TestCmdline, GetType) {
-  EXPECT_EQ(ascpp::option::get_type<bool>(), ascpp::option::S_BOOL);
-  EXPECT_EQ(ascpp::option::get_type<int>(), ascpp::option::S_INT);
-  EXPECT_EQ(ascpp::option::get_type<size_t>(), ascpp::option::S_SIZE);
-  EXPECT_EQ(ascpp::option::get_type<float>(), ascpp::option::S_FLOAT);
-  EXPECT_EQ(ascpp::option::get_type<double>(), ascpp::option::S_DOUBLE);
-  EXPECT_EQ(ascpp::option::get_type<std::string>(), ascpp::option::S_STRING);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<bool>>(), ascpp::option::M_BOOL);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<int>>(), ascpp::option::M_INT);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<size_t>>(), ascpp::option::M_SIZE);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<float>>(), ascpp::option::M_FLOAT);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<double>>(), ascpp::option::M_DOUBLE);
-  EXPECT_EQ(ascpp::option::get_type<std::vector<std::string>>(), ascpp::option::M_STRING);
+  EXPECT_EQ(ascpp::option::get_type<bool>(), ascpp::option::single_bool);
+  EXPECT_EQ(ascpp::option::get_type<int>(), ascpp::option::single_int);
+  EXPECT_EQ(ascpp::option::get_type<size_t>(), ascpp::option::single_size);
+  EXPECT_EQ(ascpp::option::get_type<float>(), ascpp::option::single_float);
+  EXPECT_EQ(ascpp::option::get_type<double>(), ascpp::option::single_double);
+  EXPECT_EQ(ascpp::option::get_type<std::string>(), ascpp::option::single_string);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<bool>>(), ascpp::option::multiple_bool);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<int>>(), ascpp::option::multiple_int);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<size_t>>(), ascpp::option::multiple_size);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<float>>(), ascpp::option::multiple_float);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<double>>(), ascpp::option::multiple_double);
+  EXPECT_EQ(ascpp::option::get_type<std::vector<std::string>>(), ascpp::option::multiple_string);
 }
 
 TEST(TestCmdline, TypeToStr) {
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_BOOL), "bool");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_INT), "int");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_SIZE), "size_t");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_FLOAT), "float");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_DOUBLE), "double");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::S_STRING), "string");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_BOOL), "list of bool");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_INT), "list of int");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_SIZE), "list of size_t");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_FLOAT), "list of float");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_DOUBLE), "list of double");
-  EXPECT_EQ(ascpp::option::type_name(ascpp::option::M_STRING), "list of string");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_bool), "bool");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_int), "int");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_size), "size_t");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_float), "float");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_double), "double");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::single_string), "string");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_bool), "list of bool");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_int), "list of int");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_size), "list of size_t");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_float), "list of float");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_double), "list of double");
+  EXPECT_EQ(ascpp::option::type_name(ascpp::option::multiple_string), "list of string");
 }
 
 TEST(TestCmdline, CheckValue) {
@@ -116,7 +116,7 @@ TEST(TestCmdline, AddSingleOptions) {
   auto& b = cmd.get_option('b');
   auto& bol = cmd.get_option("bool");
   EXPECT_EQ(&b, &bol);
-  EXPECT_EQ(bol.opt_type, ascpp::option::S_BOOL);
+  EXPECT_EQ(bol.opt_type, ascpp::option::single_bool);
   EXPECT_EQ(bol.short_opt, "b");
   EXPECT_EQ(bol.long_opt, "bool");
   EXPECT_EQ(bol.opt_desc, "bool desc");
@@ -126,7 +126,7 @@ TEST(TestCmdline, AddSingleOptions) {
 
   cmd.add_option<int>("int", "int desc");
   auto& intt = cmd.get_option("int");
-  EXPECT_EQ(intt.opt_type, ascpp::option::S_INT);
+  EXPECT_EQ(intt.opt_type, ascpp::option::single_int);
   EXPECT_EQ(intt.short_opt, "");
   EXPECT_EQ(intt.long_opt, "int");
   EXPECT_EQ(intt.opt_desc, "int desc");
@@ -136,7 +136,7 @@ TEST(TestCmdline, AddSingleOptions) {
 
   auto limit_set_adder = cmd.add_option<size_t>("size_t", "size_t desc").with_limits({0, 1, 2});
   auto& size = cmd.get_option("size_t");
-  EXPECT_EQ(size.opt_type, ascpp::option::S_SIZE);
+  EXPECT_EQ(size.opt_type, ascpp::option::single_size);
   EXPECT_EQ(size.short_opt, "");
   EXPECT_EQ(size.long_opt, "size_t");
   EXPECT_EQ(size.opt_desc, "size_t desc");
@@ -155,7 +155,7 @@ TEST(TestCmdline, AddSingleOptions) {
   auto limit_pred_adder
       = cmd.add_option<float>("float", "float desc").with_limits([](auto v) { return v > 0; });
   auto& flt = cmd.get_option("float");
-  EXPECT_EQ(flt.opt_type, ascpp::option::S_FLOAT);
+  EXPECT_EQ(flt.opt_type, ascpp::option::single_float);
   EXPECT_EQ(flt.short_opt, "");
   EXPECT_EQ(flt.long_opt, "float");
   EXPECT_EQ(flt.opt_desc, "float desc");
@@ -173,7 +173,7 @@ TEST(TestCmdline, AddSingleOptions) {
 
   cmd.add_option<double>("double", "double desc").with_default(1.5);
   auto& dbl = cmd.get_option("double");
-  EXPECT_EQ(dbl.opt_type, ascpp::option::S_DOUBLE);
+  EXPECT_EQ(dbl.opt_type, ascpp::option::single_double);
   EXPECT_EQ(dbl.short_opt, "");
   EXPECT_EQ(dbl.long_opt, "double");
   EXPECT_EQ(dbl.opt_desc, "double desc");
@@ -183,7 +183,7 @@ TEST(TestCmdline, AddSingleOptions) {
 
   cmd.add_option<std::string>("string", "string desc").with_implicit("str");
   auto& str = cmd.get_option("string");
-  EXPECT_EQ(str.opt_type, ascpp::option::S_STRING);
+  EXPECT_EQ(str.opt_type, ascpp::option::single_string);
   EXPECT_EQ(str.short_opt, "");
   EXPECT_EQ(str.long_opt, "string");
   EXPECT_EQ(str.opt_desc, "string desc");
@@ -201,7 +201,7 @@ TEST(TestCmdline, AddMultiOptions) {
   auto& b = cmd.get_option('b');
   auto& bol = cmd.get_option("bool");
   EXPECT_EQ(&b, &bol);
-  EXPECT_EQ(bol.opt_type, ascpp::option::M_BOOL);
+  EXPECT_EQ(bol.opt_type, ascpp::option::multiple_bool);
   EXPECT_EQ(bol.short_opt, "b");
   EXPECT_EQ(bol.long_opt, "bool");
   EXPECT_EQ(bol.opt_desc, "bool desc");
@@ -211,7 +211,7 @@ TEST(TestCmdline, AddMultiOptions) {
 
   cmd.add_option<std::vector<int>>("int", "int desc");
   auto& intt = cmd.get_option("int");
-  EXPECT_EQ(intt.opt_type, ascpp::option::M_INT);
+  EXPECT_EQ(intt.opt_type, ascpp::option::multiple_int);
   EXPECT_EQ(intt.short_opt, "");
   EXPECT_EQ(intt.long_opt, "int");
   EXPECT_EQ(intt.opt_desc, "int desc");
@@ -222,7 +222,7 @@ TEST(TestCmdline, AddMultiOptions) {
   auto limit_set_adder
       = cmd.add_option<std::vector<size_t>>("size_t", "size_t desc").with_limits({0, 1, 2});
   auto& size = cmd.get_option("size_t");
-  EXPECT_EQ(size.opt_type, ascpp::option::M_SIZE);
+  EXPECT_EQ(size.opt_type, ascpp::option::multiple_size);
   EXPECT_EQ(size.short_opt, "");
   EXPECT_EQ(size.long_opt, "size_t");
   EXPECT_EQ(size.opt_desc, "size_t desc");
@@ -245,7 +245,7 @@ TEST(TestCmdline, AddMultiOptions) {
           return v > 0;
         });
   auto& flt = cmd.get_option("float");
-  EXPECT_EQ(flt.opt_type, ascpp::option::M_FLOAT);
+  EXPECT_EQ(flt.opt_type, ascpp::option::multiple_float);
   EXPECT_EQ(flt.short_opt, "");
   EXPECT_EQ(flt.long_opt, "float");
   EXPECT_EQ(flt.opt_desc, "float desc");
@@ -265,7 +265,7 @@ TEST(TestCmdline, AddMultiOptions) {
 
   cmd.add_option<std::vector<double>>("double", "double desc").with_default({1.5});
   auto& dbl = cmd.get_option("double");
-  EXPECT_EQ(dbl.opt_type, ascpp::option::M_DOUBLE);
+  EXPECT_EQ(dbl.opt_type, ascpp::option::multiple_double);
   EXPECT_EQ(dbl.short_opt, "");
   EXPECT_EQ(dbl.long_opt, "double");
   EXPECT_EQ(dbl.opt_desc, "double desc");
@@ -276,7 +276,7 @@ TEST(TestCmdline, AddMultiOptions) {
 
   cmd.add_option<std::vector<std::string>>("string", "string desc").with_implicit({"str"});
   auto& str = cmd.get_option("string");
-  EXPECT_EQ(str.opt_type, ascpp::option::M_STRING);
+  EXPECT_EQ(str.opt_type, ascpp::option::multiple_string);
   EXPECT_EQ(str.short_opt, "");
   EXPECT_EQ(str.long_opt, "string");
   EXPECT_EQ(str.opt_desc, "string desc");

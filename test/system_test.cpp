@@ -9,10 +9,10 @@
 // NOLINTBEGIN(modernize-use-trailing-return-type)
 
 TEST(TestMisc, GetAndSetEnv) {
-  EXPECT_EQ(ascpp::get_env("null").error(), ascpp::error::GET_EMPTY_ENV);
+  EXPECT_EQ(ascpp::get_env("null").error(), ascpp::error::get_empty_env);
 
   ascpp::set_env("empty", "").value();
-  EXPECT_EQ(ascpp::get_env("empty").error(), ascpp::error::GET_EMPTY_ENV);
+  EXPECT_EQ(ascpp::get_env("empty").error(), ascpp::error::get_empty_env);
 
   ascpp::set_env("hello", "world").value();
   EXPECT_EQ(ascpp::get_env("hello").value(), "world");

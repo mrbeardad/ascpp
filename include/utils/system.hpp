@@ -20,16 +20,16 @@ inline auto get_env(const std::string& name) -> result<std::string> {
   auto size = size_t();
   auto err = ::getenv_s(&size, nullptr, 0, name.c_str());
   if (err) {
-    return make_error_code(error::GET_ENV_FAILED);
+    return make_error_code(error::get_env_failed);
   }
   if (size == 0) {
-    return make_error_code(error::GET_EMPTY_ENV);
+    return make_error_code(error::get_empty_env);
   }
 
   auto value = std::string(size, '\0');
   err = ::getenv_s(&size, value.data(), size, name.c_str());
   if (err) {
-    return make_error_code(error::GET_ENV_FAILED);
+    return make_error_code(error::get_env_failed);
   }
   value.resize(size - 1);
   return value;
@@ -51,7 +51,7 @@ inline auto get_env(const std::string& name) -> result<std::string> {
 inline auto set_env(const std::string& name, const std::string& value) -> result<void> {
 #if defined(_WIN32) || defined(_WIN64)
   if (::_putenv_s(name.c_str(), value.c_str())) {
-    return make_error_code(error::SET_ENV_FAILED);
+    return make_error_code(error::set_env_failed);
   }
   return {};
 #else
